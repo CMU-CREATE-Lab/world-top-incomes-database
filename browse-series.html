@@ -1,0 +1,189 @@
+<html>
+<head>
+<style>
+body {
+  font-family:sans-serif;
+}
+td {
+  font-size:9px;
+  border:1px solid black;
+  text-align:center;
+  cursor:pointer;
+}
+table {
+  border-collapse:collapse;
+}
+</style>
+
+<script src="https://www.google.com/jsapi"></script>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+
+<script>
+
+var chart;
+
+function example() {
+   var data = [];
+   data.push(['x', 'red', 'green', 'blue', 'alpha']);
+   for (var i = 0; i < 512; i++) {
+     data.push([i, i, i*1.5, i*2, i*2.5]);
+   }
+   chart = new google.visualization.LineChart(document.getElementById('chart'));
+   chart.draw(google.visualization.arrayToDataTable(data), { title: '3 Points Simulated vs Actual', series: { 0: {lineWidth: 4}, 3: { lineDashStyle: [4,4] } }, colors: ['red', 'green', 'blue', 'black']});
+}
+
+var wtid;
+
+function fetch_data(country, category) {
+  var combined = {}, variants, i;
+  for (i = 0; i < wtid.series.length; i++) {
+    if (wtid.series[i].category == category) {
+      variants = wtid.series[i].variants;
+      break;
+    }
+  }
+  for (i = 0; i < variants.length; i++) {
+    var series = wtid.countries[country][variants[i]];
+    if (series) {
+      for (j = 0; j < series.length; j++) {
+        var year = series[j][0], value = series[j][1];
+        if (!(year in combined)) {
+          combined[year] = value;
+        }
+      }
+    }
+  }
+  var ret = [];
+  var years = Object.keys(combined).sort();
+  for (i = 0; i < years.length; i++) {
+    ret.push([years[i], combined[years[i]]]);
+  }
+  return ret;
+}
+
+var displayed = {};
+var mouseover = null;
+
+
+function draw_chart() {
+  var table = [['year']];
+  var years = {};
+  var col = 0;
+
+  var enabledMouseover = false;
+
+  if (mouseover && !displayed[mouseover.country][mouseover.category]) {
+    displayed[mouseover.country][mouseover.category] = true;
+    enabledMouseover = true;
+  }
+
+  var countries = Object.keys(wtid.countries).sort();
+  for (var j = 0; j < countries.length; j++) {
+    var country = countries[j];
+    for (var i = 0; i < wtid.series.length; i++) {
+      var category = wtid.series[i].category;
+      if (displayed[country][category]) {
+        var data = fetch_data(country, category);
+        table[0][col + 1] = country + ': ' + category;
+        for (var k = 0; k < data.length; k++) {
+          var year = data[k][0], value = data[k][1];
+          if (!(year in years)) {
+            years[year] = {};
+          }
+          years[year][col] = value;
+        }
+        col += 1;
+      }
+    }
+  }
+
+  var yearnos = Object.keys(years).sort();
+  for (var i = 0; i < yearnos.length; i++) {
+    var year = yearnos[i];
+    var row = [year];
+    for (var j = 0; j < col; j++) {
+      row.push(years[year][j]);
+    }
+    table.push(row);
+  }
+  console.log(table);
+  chart.draw(google.visualization.arrayToDataTable(table));
+
+  if (enabledMouseover) {
+    displayed[mouseover.country][mouseover.category] = false;
+  }
+}
+
+function toggle_series(series, elt) {
+  console.log('toggle series');
+  displayed[series.country][series.category] = !displayed[series.country][series.category];
+  if (displayed[series.country][series.category]) {
+    $(elt).css('background-color','yellow');
+  } else {
+    $(elt).css('background-color','white');
+  }
+  draw_chart();
+}
+
+function mouseenter(e) {
+  mouseover = e.data;
+  draw_chart();
+}
+
+function mouseleave(e) {
+  mouseover = null;
+  draw_chart();
+}
+
+function init_wtid(data) {
+  wtid = data;
+  /// Create table of countries and series
+  
+  var header = $('<tr>');
+  header.append($('<td>'));
+  for (var i = 0; i < wtid.series.length; i++) {
+    var series = wtid.series[i];
+    header.append($('<td>').append(series.category));
+  }
+  $('#series').append(header);
+
+  var countries = Object.keys(wtid.countries).sort();
+  for (var j = 0; j < countries.length; j++) {
+    var country = countries[j];
+    displayed[country] = {};
+    var row = $('<tr>');
+    row.append($('<td>').append(country));
+    for (var i = 0; i < wtid.series.length; i++) {
+      var series = wtid.series[i];
+      displayed[country][series.category] = false;
+      var col = $('<td>');
+      var data = fetch_data(country, series.category);
+      if (data.length) {
+        col.append(data.length);
+        col.click({country:country, category:series.category}, function(e) { toggle_series(e.data, this); });
+        col.mouseenter({country:country, category:series.category}, mouseenter);
+        col.mouseleave({country:country, category:series.category}, mouseleave);
+      }
+      row.append(col);
+    }
+    $('#series').append(row);
+  }
+}
+
+function init() {
+  example();
+  $.get('wtid.json', init_wtid);
+}
+
+
+google.load("visualization", "1", {packages:["corechart"]});
+google.setOnLoadCallback(init);
+
+</script>
+
+</head>
+<body>
+<table id="series"></table>
+<div id="chart" style="height: 650px; width: 100%"></div>
+</body>
+</html>
