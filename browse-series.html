@@ -34,14 +34,46 @@ function example() {
 
 var wtid;
 
+var computed_source = {};
+
+function to_object(series) {
+  var ret = {};
+  for (var i = 0; i < series.length; i++) {
+    ret[series[i][0]] = series[i][1];
+  }
+  return ret;
+}
+  
+function fetch_computed_data(country, category) {
+  var ret = [];
+  if (category.match(/\/ bottom 90% income/)) {
+    var source = to_object(fetch_data(country, computed_source[category]));
+    var bot90 = to_object(fetch_data(country, 'Bottom 90% average income'));
+
+    var years = Object.keys(source).sort();
+    for (var i = 0; i < years.length; i++) {
+      var year = years[i];
+      if (year in bot90) {
+        ret.push([year, source[year] / bot90[year]]);
+      }
+    }
+  }
+  return ret;
+}
+
 function fetch_data(country, category) {
   var combined = {}, variants, i;
-  for (i = 0; i < wtid.series.length; i++) {
-    if (wtid.series[i].category == category) {
-      variants = wtid.series[i].variants;
+  for (i = 0; i < wtid_series().length; i++) {
+    var series = wtid_series()[i];
+    if (series.category == category) {
+      variants = series.variants;
       break;
     }
   }
+  if (!variants) {
+    return fetch_computed_data(country, category);
+  }
+
   for (i = 0; i < variants.length; i++) {
     var series = wtid.countries[country][variants[i]];
     if (series) {
@@ -74,8 +106,8 @@ function draw_chart() {
   var serialize = [];
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
-    for (var i = 0; i < wtid.series.length; i++) {
-      var category = wtid.series[i].category;
+    for (var i = 0; i < wtid_series().length; i++) {
+      var category = wtid_series()[i].category;
       var g = grid[country][category];
       if (g.displayed) {
         serialize = serialize.concat([country, category]);
@@ -123,13 +155,13 @@ function set_grid_display(g, displayed) {
   }
 }
 
-function clear_all_series() {
+function clear_wtid_series() {
   console.log('clear all series');
   var countries = Object.keys(wtid.countries).sort();
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
-    for (var i = 0; i < wtid.series.length; i++) {
-      set_grid_display(grid[country][wtid.series[i].category], false);
+    for (var i = 0; i < wtid_series().length; i++) {
+      set_grid_display(grid[country][wtid_series()[i].category], false);
     }
   }
 }
@@ -162,7 +194,7 @@ var current_hash = null;
 function read_hash() {
   var new_hash = window.location.hash.slice(1);
   if (new_hash != current_hash) {
-    clear_all_series();
+    clear_wtid_series();
     current_hash = new_hash;
     console.log('current_hash is ' + current_hash);
     var deserialized = window.atob(current_hash).split('|');
@@ -175,14 +207,32 @@ function read_hash() {
   }
 }
 
+var wtid_series_cached;
+
+function wtid_series() {
+  if (!wtid_series_cached) {
+    wtid_series_cached = [];
+    for (var i = 0; i < wtid.series.length; i++) {
+      var s = wtid.series[i];
+      wtid_series_cached.push(s);
+      if (s.category.match(/ average income/)) {
+        var computed_category = s.category.replace(' average income', ' / bottom 90% income');
+        computed_source[computed_category] = s.category;
+        wtid_series_cached.push({category: computed_category});
+      }
+    }
+  }
+  return wtid_series_cached;
+}
+
 function init_wtid(data) {
   wtid = data;
   /// Create table of countries and series
   
   var header = $('<tr>');
   header.append($('<td>'));
-  for (var i = 0; i < wtid.series.length; i++) {
-    var series = wtid.series[i];
+  for (var i = 0; i < wtid_series().length; i++) {
+    var series = wtid_series()[i];
     header.append($('<td>').append(series.category));
   }
   $('#grid').append(header);
@@ -193,8 +243,8 @@ function init_wtid(data) {
     grid[country] = {};
     var row = $('<tr>');
     row.append($('<td>').append(country));
-    for (var i = 0; i < wtid.series.length; i++) {
-      var series = wtid.series[i];
+    for (var i = 0; i < wtid_series().length; i++) {
+      var series = wtid_series()[i];
       var col = $('<td>');
       grid[country][series.category] = {displayed:false, element:col, hilit:false};
       var data = fetch_data(country, series.category);
