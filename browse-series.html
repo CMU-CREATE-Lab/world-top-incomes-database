@@ -19,7 +19,6 @@ table {
 
 <script src="https://www.google.com/jsapi"></script>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
-
 <script>
 
 var chart;
@@ -95,7 +94,8 @@ function draw_chart() {
       }
     }
   }
-  current_hash = encodeURIComponent(serialize.join('|'));
+  current_hash = window.btoa(serialize.join('|').replace(/=/g, ''));
+  console.log('Setting hash to ' + current_hash);
   window.location.hash = current_hash;
 
   var yearnos = Object.keys(years).sort();
@@ -164,7 +164,9 @@ function read_hash() {
   if (new_hash != current_hash) {
     clear_all_series();
     current_hash = new_hash;
-    var deserialized = decodeURI(current_hash).split('|');
+    console.log('current_hash is ' + current_hash);
+    var deserialized = window.atob(current_hash).split('|');
+    console.log('deserialized is ' + deserialized);
     console.log(deserialized);
     while (deserialized.length >= 2) {
       set_grid_display(grid[deserialized.shift()][deserialized.shift()], true);
@@ -206,6 +208,13 @@ function init_wtid(data) {
     }
     $('#grid').append(row);
   }
+  $('#grid').parent().scroll(function(e){
+    $('#gridtop').children().css({position:'relative', left:-this.scrollLeft + 'px'});
+    $('#gridleft').children().css({position:'relative', top:-this.scrollTop + 'px'});
+  });
+  $('#gridtop').append($('#grid').clone(true,true)).css({height:$('#grid td').height() + 5});
+  $('#gridleft').append($('#grid').clone(true,true)).css({width:$('#grid td').width() + 5});
+  $('#gridtopleft').css({width:$('#gridleft').width() - 2,height:$('#gridtop').height() - 2});
   read_hash();
 }
 
@@ -222,7 +231,10 @@ google.setOnLoadCallback(init);
 
 </head>
 <body style="height:100%">
+<div id="gridtopleft" style="border:1px solid black; z-index:11; height:50px; position: absolute; background-color:#eee; width:100%; overflow:hidden"></div>
+<div id="gridtop" style="z-index:10; height:50px; position: absolute; background-color:#eee; width:100%; overflow:hidden"></div>
+<div id="gridleft" style="z-index:10; height:50%; position: absolute; background-color:#eee; width:100px; overflow:hidden"></div>
 <div style="height:50%; width:100%; overflow:auto"><table id="grid"></table></div>
-<div id="chart" style="height:50%; width:100%"></div>
+<div id="chart" style="show:none; height:50%; width:100%"></div>
 </body>
 </html>
