@@ -3,6 +3,8 @@
 <style>
 body {
   font-family:sans-serif;
+  margin:0px;
+  border:0px;
 }
 td {
   font-size:9px;
@@ -29,7 +31,6 @@ function example() {
      data.push([i, i, i*1.5, i*2, i*2.5]);
    }
    chart = new google.visualization.LineChart(document.getElementById('chart'));
-   chart.draw(google.visualization.arrayToDataTable(data), { title: '3 Points Simulated vs Actual', series: { 0: {lineWidth: 4}, 3: { lineDashStyle: [4,4] } }, colors: ['red', 'green', 'blue', 'black']});
 }
 
 var wtid;
@@ -61,8 +62,8 @@ function fetch_data(country, category) {
   return ret;
 }
 
-var displayed = {};
-var mouseover = null;
+var grid = {};
+var mouseover = {};
 
 
 function draw_chart() {
@@ -70,19 +71,17 @@ function draw_chart() {
   var years = {};
   var col = 0;
 
-  var enabledMouseover = false;
-
-  if (mouseover && !displayed[mouseover.country][mouseover.category]) {
-    displayed[mouseover.country][mouseover.category] = true;
-    enabledMouseover = true;
-  }
-
   var countries = Object.keys(wtid.countries).sort();
+  var serialize = [];
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
     for (var i = 0; i < wtid.series.length; i++) {
       var category = wtid.series[i].category;
-      if (displayed[country][category]) {
+      var g = grid[country][category];
+      if (g.displayed) {
+        serialize = serialize.concat([country, category]);
+      }
+      if (g.displayed || country == mouseover.country && category == mouseover.category) {
         var data = fetch_data(country, category);
         table[0][col + 1] = country + ': ' + category;
         for (var k = 0; k < data.length; k++) {
@@ -96,6 +95,8 @@ function draw_chart() {
       }
     }
   }
+  current_hash = encodeURIComponent(serialize.join('|'));
+  window.location.hash = current_hash;
 
   var yearnos = Object.keys(years).sort();
   for (var i = 0; i < yearnos.length; i++) {
@@ -106,23 +107,44 @@ function draw_chart() {
     }
     table.push(row);
   }
-  console.log(table);
-  chart.draw(google.visualization.arrayToDataTable(table));
 
-  if (enabledMouseover) {
-    displayed[mouseover.country][mouseover.category] = false;
+  if (col) {
+    $('#chart').show();
+    chart.draw(google.visualization.arrayToDataTable(table));
+  } else {
+    $('#chart').hide();
   }
 }
 
-function toggle_series(series, elt) {
-  console.log('toggle series');
-  displayed[series.country][series.category] = !displayed[series.country][series.category];
-  if (displayed[series.country][series.category]) {
-    $(elt).css('background-color','yellow');
-  } else {
-    $(elt).css('background-color','white');
+function set_grid_display(g, displayed) {
+  if (g.displayed != displayed) {
+    g.displayed = displayed;
+    g.element.css('background-color', g.displayed ? 'yellow' : 'white');
   }
+}
+
+function clear_all_series() {
+  console.log('clear all series');
+  var countries = Object.keys(wtid.countries).sort();
+  for (var j = 0; j < countries.length; j++) {
+    var country = countries[j];
+    for (var i = 0; i < wtid.series.length; i++) {
+      set_grid_display(grid[country][wtid.series[i].category], false);
+    }
+  }
+}
+
+function toggle_series(e) {
+  var series = e.data;
+  var start = new Date();
+  console.log(series);
+  console.log('toggle series ' + JSON.stringify(series));
+  var g = grid[series.country][series.category];
+  set_grid_display(g, !g.displayed);
+  console.log('set ' + series.country + '|' + series.category + ' to ' + g.displayed);
   draw_chart();
+
+  console.log('toggle_series took ' + (new Date() - start));
 }
 
 function mouseenter(e) {
@@ -131,8 +153,24 @@ function mouseenter(e) {
 }
 
 function mouseleave(e) {
-  mouseover = null;
+  mouseover = {};
   draw_chart();
+}
+
+var current_hash = null;
+
+function read_hash() {
+  var new_hash = window.location.hash.slice(1);
+  if (new_hash != current_hash) {
+    clear_all_series();
+    current_hash = new_hash;
+    var deserialized = decodeURI(current_hash).split('|');
+    console.log(deserialized);
+    while (deserialized.length >= 2) {
+      set_grid_display(grid[deserialized.shift()][deserialized.shift()], true);
+    }
+    draw_chart();
+  }
 }
 
 function init_wtid(data) {
@@ -145,36 +183,37 @@ function init_wtid(data) {
     var series = wtid.series[i];
     header.append($('<td>').append(series.category));
   }
-  $('#series').append(header);
+  $('#grid').append(header);
 
   var countries = Object.keys(wtid.countries).sort();
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
-    displayed[country] = {};
+    grid[country] = {};
     var row = $('<tr>');
     row.append($('<td>').append(country));
     for (var i = 0; i < wtid.series.length; i++) {
       var series = wtid.series[i];
-      displayed[country][series.category] = false;
       var col = $('<td>');
+      grid[country][series.category] = {displayed:false, element:col, hilit:false};
       var data = fetch_data(country, series.category);
       if (data.length) {
         col.append(data.length);
-        col.click({country:country, category:series.category}, function(e) { toggle_series(e.data, this); });
+        col.click({country:country, category:series.category}, toggle_series);
         col.mouseenter({country:country, category:series.category}, mouseenter);
         col.mouseleave({country:country, category:series.category}, mouseleave);
       }
       row.append(col);
     }
-    $('#series').append(row);
+    $('#grid').append(row);
   }
+  read_hash();
 }
 
 function init() {
   example();
   $.get('wtid.json', init_wtid);
+  $(window).on('hashchange', read_hash);
 }
-
 
 google.load("visualization", "1", {packages:["corechart"]});
 google.setOnLoadCallback(init);
@@ -182,8 +221,8 @@ google.setOnLoadCallback(init);
 </script>
 
 </head>
-<body>
-<table id="series"></table>
-<div id="chart" style="height: 650px; width: 100%"></div>
+<body style="height:100%">
+<div style="height:50%; width:100%; overflow:auto"><table id="grid"></table></div>
+<div id="chart" style="height:50%; width:100%"></div>
 </body>
 </html>
