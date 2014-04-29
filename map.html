@@ -1,0 +1,262 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>World Top Income Database</title>
+  <style type="text/css">
+    body, p, table, tr, td, div, span {
+      font-size: 8pt;
+      font-family: "Helvetica Neue", HelveticaNeue, Helvetica, Arial, sans-serif;
+    }
+
+    .noselect {
+      -moz-user-select: none;
+      -webkit-user-select: none;
+      -webkit-text-size-adjust: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+
+    .title_text {
+      text-align: center;
+      font-size: 20pt;
+    }
+
+    #loading_panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: white;
+      z-index: 1000;
+      padding: 10px;
+      text-align: center;
+      font-size: 50pt;
+    }
+
+    #map_canvas {
+      border: 1px solid black;
+      width: 1024px;
+      height: 500px;
+    }
+
+    #chart {
+      border: 1px solid black;
+      border-top: none;
+      width: 1024px;
+      height: 400px;
+      display: none;
+    }
+  </style>
+  <script type="text/javascript" src="http://www.google.com/jsapi"></script>
+  <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAVrRKgWPEnGdXLvZiAJpVHeM4qmUpy1Zs&sensor=false"></script>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script type="text/javascript" src="js/series.js"></script>
+  <script type="text/javascript">
+
+    var DATASETS = [
+      "Top 1% income share",
+      "Top 10% income share",
+      "Top 1% average income",
+      "Top 10% average income",
+      "Bottom 90% average income",
+      "Top 1% / bottom 90% income",
+      "Top 10% / bottom 90% income"
+    ];
+    var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
+    var map = null;
+    var isMapLoaded = false;
+    var isDataLoaded = false;
+    var isCountryGeometryLoaded = false;
+    var initializationIntervalHandle = null;
+
+    // raw query results
+    var countryGeometryRecords = null;
+
+    // map of country name to geometry
+    var countryNameToPolygon = {};
+
+    function executeQuery(query, successCallback) {
+      // Construct the URL
+      var url = ['https://www.googleapis.com/fusiontables/v1/query'];
+      url.push('?sql=' + query);
+      url.push('&key=AIzaSyAVrRKgWPEnGdXLvZiAJpVHeM4qmUpy1Zs');
+      url.push('&callback=?');
+
+      var theUrl = url.join('');
+
+      // Send the JSONP request using jQuery
+      $.ajax({
+               url : theUrl,
+               dataType : 'jsonp',
+               success : successCallback,
+               error : function(jqXHR, textStatus, errorThrown) {
+                 console.log("AJAX ERROR: [" + textStatus + "] and [" + errorThrown + "]");
+               }
+             });
+    }
+
+    function loadData() {
+
+      // Load the WTID data
+      $.get('wtid-2014-04-25.json', function(data) {
+        console.log("Data loaded!");
+        wtid = data;
+        isDataLoaded = true;
+      });
+
+      // Load the country geometries.  Yeah, I know I could make this more efficient by only loading the countries
+      // which have WTID data, but then I'd need to serialize the data fetching calls, so...whatever.
+      executeQuery(COUNTRY_GEOMETRY_QUERY,
+                   function(data) {
+                     countryGeometryRecords = data;
+                     isCountryGeometryLoaded = true;
+                   }
+      );
+
+      // initialize and load the map
+      map = new google.maps.Map(document.getElementById("map_canvas"), {
+        center : new google.maps.LatLng(17.97873303293798, 11.33789075000005),
+        zoom : 2,
+        mapTypeId : google.maps.MapTypeId.ROADMAP
+      });
+      google.maps.event.addListenerOnce(map, 'tilesloaded',
+                                        function(e) {
+                                          console.log("Map loaded!");
+                                          isMapLoaded = true;
+
+                                        });
+
+      // Kick of an interval timer to keep checking whether all the various data sources have finished loading.  Once
+      // loaded, we'll call init() to initialize the UI and the hide the Loading panel.
+      initializationIntervalHandle = window.setInterval(function() {
+        console.log("checking whether data, map, and geometries have loaded...");
+        if (isDataLoaded && isMapLoaded && isCountryGeometryLoaded) {
+          window.clearInterval(initializationIntervalHandle);
+          initializationIntervalHandle = null;
+          console.log("Done loading!");
+
+          init();
+        }
+      }, 200);
+    }
+
+    function init() {
+
+      // build the dataset select menu
+      DATASETS.forEach(function(name) {
+        var option = $('<option value="' + name + '">' + name + '</option>');
+        $("#datasets").append(option);
+      });
+
+      // build the country name to polygon map, render the polygons on the map
+      buildCountryPolygons();
+
+      $("#loading_panel").hide();
+      $("#main_panel").show();
+    }
+
+    function buildCountryPolygons() {
+      Object.keys(wtid.countries).forEach(function(countryName) {
+        countryNameToPolygon[countryName] = null;
+      });
+      $.each(countryGeometryRecords['rows'], function(index, countryGeometryRecord) {
+               var countryName = countryGeometryRecord[0];
+
+               // if this is a country with WTID data, then get its geometry
+               if (countryNameToPolygon.hasOwnProperty(countryName)) {
+
+                 // Deal with the two different kinds of geometries: Polygons and GeometryCollections
+                 var geometry = countryGeometryRecord[1];
+                 var polygon = null;
+                 if (geometry['geometry'] && geometry['geometry']['type'] && geometry['geometry']['type'] == "Polygon") {
+
+                   var latLongs = [];
+                   var coordinates = geometry['geometry']['coordinates'][0];
+                   for (var i = 0; i < coordinates.length; i++) {
+                     latLongs.push(new google.maps.LatLng(coordinates[i][1], coordinates[i][0]));
+                   }
+                   polygon = new google.maps.Polygon({
+                                                       paths : latLongs,
+                                                       strokeColor : "#ffffff",
+                                                       strokeOpacity : 0.8,
+                                                       strokeWeight : 1,
+                                                       fillColor : "#0000bb",
+                                                       fillOpacity : 0.5
+                                                     });
+
+                 } else if (geometry['type'] && geometry['type'] == "GeometryCollection") {
+
+                   var multiLatLongs = [];
+                   for (var j = 0; j < geometry['geometries'].length; j++) {
+                     var geometryPiece = geometry['geometries'][j];
+                     var latLongs = [];
+
+                     var coordinates = geometryPiece['coordinates'][0];
+                     for (var i = 0; i < coordinates.length; i++) {
+                       latLongs.push(new google.maps.LatLng(coordinates[i][1], coordinates[i][0]));
+                     }
+                     multiLatLongs.push(latLongs);
+                   }
+                   polygon = new google.maps.Polygon({
+                                                       paths : multiLatLongs,
+                                                       strokeColor : "#ffffff",
+                                                       strokeOpacity : 0.8,
+                                                       strokeWeight : 1,
+                                                       fillColor : "#0000bb",
+                                                       fillOpacity : 0.5
+                                                     });
+                 } else {
+                   console.log("Ingoring unexpected geometry type for country [" + countryName + "]: " + JSON.stringify(geometry));
+                 }
+
+                 if (polygon != null) {
+                   countryNameToPolygon[countryName] = polygon;
+
+                   polygon.setMap(map);
+                   google.maps.event.addListener(polygon,
+                                                 'mouseover',
+                                                 function() {
+                                                   polygon.setOptions({fillOpacity : 9});
+                                                   draw_chart([
+                                                                {country : countryName, category : $("#datasets").val(), color : 'green'}
+                                                              ]); // TODO: use correct color
+                                                   $("#chart").show();
+                                                 });
+                   google.maps.event.addListener(polygon,
+                                                 'mouseout',
+                                                 function() {
+                                                   polygon.setOptions({fillOpacity : 0.5});
+                                                   $("#chart").hide();
+                                                 });
+                 }
+               }
+             }
+      );
+    }
+
+    google.load("visualization", "1", {packages : ["corechart"]});
+    google.setOnLoadCallback(loadData);
+  </script>
+</head>
+<body>
+<div id="loading_panel">Loading...</div>
+<div id="main_panel">
+  <table border="0" cellpadding="0" cellspacing="0">
+    <tr>
+      <td>
+        <div id="map_canvas"></div>
+      </td>
+      <td rowspan="2" valign="top">
+        <select id="datasets"></select>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div id="chart" class="noselect"></div>
+      </td>
+    </tr>
+  </table>
+</div>
+</body>
+</html>
