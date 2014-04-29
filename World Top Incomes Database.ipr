@@ -269,7 +269,6 @@
         <codeStyleSettings language="JavaScript">
           <option name="KEEP_FIRST_COLUMN_COMMENT" value="false" />
           <option name="KEEP_BLANK_LINES_IN_CODE" value="1" />
-          <option name="ELSE_ON_NEW_LINE" value="true" />
           <option name="WHILE_ON_NEW_LINE" value="true" />
           <option name="CATCH_ON_NEW_LINE" value="true" />
           <option name="FINALLY_ON_NEW_LINE" value="true" />
@@ -283,9 +282,8 @@
           <option name="FOR_BRACE_FORCE" value="3" />
           <option name="PARENT_SETTINGS_INSTALLED" value="true" />
           <indentOptions>
-            <option name="INDENT_SIZE" value="3" />
-            <option name="CONTINUATION_INDENT_SIZE" value="6" />
-            <option name="TAB_SIZE" value="3" />
+            <option name="INDENT_SIZE" value="2" />
+            <option name="TAB_SIZE" value="2" />
           </indentOptions>
         </codeStyleSettings>
         <codeStyleSettings language="LESS">
