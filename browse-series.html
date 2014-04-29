@@ -19,85 +19,18 @@ table {
 
 <script src="https://www.google.com/jsapi"></script>
 <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script src="js/series.js"></script>
 <script>
-
-var chart;
-
-function example() {
-   var data = [];
-   data.push(['x', 'red', 'green', 'blue', 'alpha']);
-   for (var i = 0; i < 512; i++) {
-     data.push([i, i, i*1.5, i*2, i*2.5]);
-   }
-   chart = new google.visualization.LineChart(document.getElementById('chart'));
-}
-
-var wtid;
-
-var computed_source = {};
-
-function to_object(series) {
-  var ret = {};
-  for (var i = 0; i < series.length; i++) {
-    ret[series[i][0]] = series[i][1];
-  }
-  return ret;
-}
-  
-function fetch_computed_data(country, category) {
-  var ret = [];
-  if (category.match(/\/ bottom 90% income/)) {
-    var source = to_object(fetch_data(country, computed_source[category]));
-    var bot90 = to_object(fetch_data(country, 'Bottom 90% average income'));
-
-    var years = Object.keys(source).sort();
-    for (var i = 0; i < years.length; i++) {
-      var year = years[i];
-      if (year in bot90) {
-        ret.push([year, source[year] / bot90[year]]);
-      }
-    }
-  }
-  return ret;
-}
-
-function fetch_data(country, category) {
-  var combined = {}, variants, i;
-  for (i = 0; i < wtid_series().length; i++) {
-    var series = wtid_series()[i];
-    if (series.category == category) {
-      variants = series.variants;
-      break;
-    }
-  }
-  if (!variants) {
-    return fetch_computed_data(country, category);
-  }
-
-  for (i = 0; i < variants.length; i++) {
-    var series = wtid.countries[country][variants[i]];
-    if (series) {
-      for (j = 0; j < series.length; j++) {
-        var year = series[j][0], value = series[j][1];
-        if (!(year in combined)) {
-          combined[year] = value;
-        }
-      }
-    }
-  }
-  var ret = [];
-  var years = Object.keys(combined).sort();
-  for (i = 0; i < years.length; i++) {
-    ret.push([years[i], combined[years[i]]]);
-  }
-  return ret;
-}
 
 var grid = {};
 var mouseover = {};
 
+function draw_chart_tmp() {
+  draw_chart([{country:'United States', category:'Top 1% income share', color:'green'},
+              {country:'United States', category:'Top 10% income share', color:'blue'}]);
+}
 
-function draw_chart() {
+function draw_chart_old() {
   var table = [['year']];
   var years = {};
   var col = 0;
@@ -142,6 +75,10 @@ function draw_chart() {
 
   if (col) {
     $('#chart').show();
+
+    if (!chart) {
+      chart = new google.visualization.LineChart(document.getElementById('chart'));
+    }
     chart.draw(google.visualization.arrayToDataTable(table));
   } else {
     $('#chart').hide();
@@ -174,19 +111,19 @@ function toggle_series(e) {
   var g = grid[series.country][series.category];
   set_grid_display(g, !g.displayed);
   console.log('set ' + series.country + '|' + series.category + ' to ' + g.displayed);
-  draw_chart();
+  draw_chart_tmp();
 
   console.log('toggle_series took ' + (new Date() - start));
 }
 
 function mouseenter(e) {
   mouseover = e.data;
-  draw_chart();
+  draw_chart_tmp();
 }
 
 function mouseleave(e) {
   mouseover = {};
-  draw_chart();
+  draw_chart_tmp();
 }
 
 var current_hash = null;
@@ -203,26 +140,8 @@ function read_hash() {
     while (deserialized.length >= 2) {
       set_grid_display(grid[deserialized.shift()][deserialized.shift()], true);
     }
-    draw_chart();
+    draw_chart_tmp();
   }
-}
-
-var wtid_series_cached;
-
-function wtid_series() {
-  if (!wtid_series_cached) {
-    wtid_series_cached = [];
-    for (var i = 0; i < wtid.series.length; i++) {
-      var s = wtid.series[i];
-      wtid_series_cached.push(s);
-      if (s.category.match(/ average income/)) {
-        var computed_category = s.category.replace(' average income', ' / bottom 90% income');
-        computed_source[computed_category] = s.category;
-        wtid_series_cached.push({category: computed_category});
-      }
-    }
-  }
-  return wtid_series_cached;
 }
 
 function init_wtid(data) {
@@ -269,7 +188,6 @@ function init_wtid(data) {
 }
 
 function init() {
-  example();
   $.get('wtid.json', init_wtid);
   $(window).on('hashchange', read_hash);
 }
