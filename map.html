@@ -163,6 +163,7 @@
         $("#datasets").append(option);
       });
       $("#datasets").change(function() {
+        updateMap();
         updateChart();
         updateHash();
       });
@@ -172,6 +173,7 @@
 
       $(window).on('hashchange', readHash);
       readHash();
+      updateMap();
 
       $("#loading_panel").hide();
       $("#main_panel").show();
@@ -276,6 +278,14 @@
       }
     }
 
+    // Shows or hides each country's polygon depending on whether the country has data for the selected dataset
+    function updateMap() {
+      var dataset = $("#datasets").val();
+      Object.keys(countryToRendering).forEach(function(countryName) {
+        countryToRendering[countryName]['polygon'].setMap(hasData(countryName, dataset) > 0 ? map : null);
+      });
+    }
+
     function updateChart() {
       // update and show the chart if there are selected countries.  Otherwise, hide it.
       if (Object.keys(currentlySelectedCountries).length > 0) {
@@ -292,13 +302,11 @@
 
     function updateHash() {
       currentHash = window.btoa($("#datasets").val() + "|" + Object.keys(currentlySelectedCountries).join('|'));
-      console.log('Setting hash to ' + currentHash);
       window.location.hash = currentHash;
     }
 
     function readHash() {
       var newHash = window.location.hash.slice(1);
-      console.log("readHash(): newHash = [" + newHash + "] current = [" + currentHash + "]");
       if (newHash != currentHash) {
         currentHash = newHash;
 
