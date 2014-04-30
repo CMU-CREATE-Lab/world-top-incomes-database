@@ -105,15 +105,19 @@ function draw_chart(series) {
     var category = series[i].category;
     colors.push(series[i].color);
     var data = fetch_data(country, category);
-    table[0][col + 1] = country + ': ' + category;
-    for (var k = 0; k < data.length; k++) {
-      var year = data[k][0], value = data[k][1];
-      if (!(year in years)) {
-        years[year] = {};
+
+    // skip this country if it has no data for the given category
+    if (data.length > 0) {
+      table[0][col + 1] = country + ': ' + category;
+      for (var k = 0; k < data.length; k++) {
+        var year = data[k][0], value = data[k][1];
+        if (!(year in years)) {
+          years[year] = {};
+        }
+        years[year][col] = value;
       }
-      years[year][col] = value;
+      col += 1;
     }
-    col += 1;
   }
 
   var yearnos = Object.keys(years).sort();
