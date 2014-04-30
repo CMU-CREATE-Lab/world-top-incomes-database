@@ -12,7 +12,7 @@ function to_object(series) {
   }
   return ret;
 }
-  
+
 function fetch_computed_data(country, category) {
   var ret = [];
   if (category.match(/\/ bottom 90% income/)) {
@@ -76,7 +76,7 @@ function wtid_series() {
       if (s.category.match(/ average income/)) {
         var computed_category = s.category.replace(' average income', ' / bottom 90% income');
         computed_source[computed_category] = s.category;
-        wtid_series_cached.push({category: computed_category});
+        wtid_series_cached.push({category : computed_category});
       }
     }
   }
@@ -95,6 +95,7 @@ var chart;
 function draw_chart(series) {
   var table = [['year']];
   var years = {};
+  var colors = [];
   var col = 0;
   console.log('draw chart new');
   console.log(series);
@@ -102,6 +103,7 @@ function draw_chart(series) {
   for (var i = 0; i < series.length; i++) {
     var country = series[i].country;
     var category = series[i].category;
+    colors.push(series[i].color);
     var data = fetch_data(country, category);
     table[0][col + 1] = country + ': ' + category;
     for (var k = 0; k < data.length; k++) {
@@ -132,7 +134,7 @@ function draw_chart(series) {
     if (!chart) {
       chart = new google.visualization.LineChart(document.getElementById('chart'));
     }
-    chart.draw(google.visualization.arrayToDataTable(table));
+    chart.draw(google.visualization.arrayToDataTable(table), {colors : colors});
   } else {
     $('#chart').hide();
   }
