@@ -41,11 +41,12 @@
     }
 
     #chart {
-      border: 1px solid black;
-      border-top: none;
-      width: 1024px;
-      height: 400px;
       display: none;
+      width: auto;
+      height: 400px;
+      margin-top: 10px;
+      margin-left: auto;
+      margin-right: auto;
     }
   </style>
   <script type="text/javascript" src="http://www.google.com/jsapi"></script>
@@ -53,6 +54,17 @@
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
   <script type="text/javascript" src="js/series.js"></script>
   <script type="text/javascript">
+
+    // Generated this set at http://tools.medialab.sciences-po.fr/iwanthue/
+    var COUNTRY_COLORS = [
+      "#A77234", "#D052D5", "#6ADB4B", "#70D4D1", "#403C5B", "#D23E6A",
+      "#C99CDA", "#C9CF7B", "#6FE19A", "#53662B", "#6B9CC4", "#CCDD40",
+      "#CF3C33", "#547470", "#742F21", "#733C83", "#896CDD", "#6A9F37",
+      "#3B3726", "#B99278", "#D8AB3B", "#D1499B", "#C8C2CC", "#D9746B",
+      "#6E2B45", "#C1D6B0", "#5A74C1", "#589E6D", "#BF7C9B", "#DF6926"
+    ];
+
+    var DEFAULT_COUNTRY_FILL_COLOR = "#333333";
 
     var DATASETS = [
       "Top 1% income share",
@@ -69,12 +81,14 @@
     var isDataLoaded = false;
     var isCountryGeometryLoaded = false;
     var initializationIntervalHandle = null;
+    var currentlySelectedCountries = {};
+    var currentHash = null;
 
     // raw query results
     var countryGeometryRecords = null;
 
-    // map of country name to geometry
-    var countryNameToPolygon = {};
+    // map of country name to and object containing "polygon" and "color" fields, used for rendering on map and in chart
+    var countryToRendering = {};
 
     function executeQuery(query, successCallback) {
       // Construct the URL
@@ -148,9 +162,16 @@
         var option = $('<option value="' + name + '">' + name + '</option>');
         $("#datasets").append(option);
       });
+      $("#datasets").change(function() {
+        updateChart();
+        updateHash();
+      });
 
       // build the country name to polygon map, render the polygons on the map
       buildCountryPolygons();
+
+      $(window).on('hashchange', readHash);
+      readHash();
 
       $("#loading_panel").hide();
       $("#main_panel").show();
@@ -158,13 +179,25 @@
 
     function buildCountryPolygons() {
       Object.keys(wtid.countries).forEach(function(countryName) {
-        countryNameToPolygon[countryName] = null;
+        countryToRendering[countryName] = {};
       });
+      var numCountriesFound = 0;
       $.each(countryGeometryRecords['rows'], function(index, countryGeometryRecord) {
                var countryName = countryGeometryRecord[0];
 
+               var createPolygon = function(paths) {
+                 return new google.maps.Polygon({
+                                                  paths : paths,
+                                                  strokeColor : "#ffffff",
+                                                  strokeOpacity : 0.8,
+                                                  strokeWeight : 1,
+                                                  fillColor : DEFAULT_COUNTRY_FILL_COLOR,
+                                                  fillOpacity : 0.5
+                                                });
+               };
+
                // if this is a country with WTID data, then get its geometry
-               if (countryNameToPolygon.hasOwnProperty(countryName)) {
+               if (countryToRendering.hasOwnProperty(countryName)) {
 
                  // Deal with the two different kinds of geometries: Polygons and GeometryCollections
                  var geometry = countryGeometryRecord[1];
@@ -176,14 +209,7 @@
                    for (var i = 0; i < coordinates.length; i++) {
                      latLongs.push(new google.maps.LatLng(coordinates[i][1], coordinates[i][0]));
                    }
-                   polygon = new google.maps.Polygon({
-                                                       paths : latLongs,
-                                                       strokeColor : "#ffffff",
-                                                       strokeOpacity : 0.8,
-                                                       strokeWeight : 1,
-                                                       fillColor : "#0000bb",
-                                                       fillOpacity : 0.5
-                                                     });
+                   polygon = createPolygon(latLongs);
 
                  } else if (geometry['type'] && geometry['type'] == "GeometryCollection") {
 
@@ -198,41 +224,101 @@
                      }
                      multiLatLongs.push(latLongs);
                    }
-                   polygon = new google.maps.Polygon({
-                                                       paths : multiLatLongs,
-                                                       strokeColor : "#ffffff",
-                                                       strokeOpacity : 0.8,
-                                                       strokeWeight : 1,
-                                                       fillColor : "#0000bb",
-                                                       fillOpacity : 0.5
-                                                     });
+                   polygon = createPolygon(multiLatLongs);
                  } else {
                    console.log("Ingoring unexpected geometry type for country [" + countryName + "]: " + JSON.stringify(geometry));
                  }
 
                  if (polygon != null) {
-                   countryNameToPolygon[countryName] = polygon;
+                   countryToRendering[countryName]['polygon'] = polygon;
+                   countryToRendering[countryName]['color'] = COUNTRY_COLORS[numCountriesFound % COUNTRY_COLORS.length];
+                   numCountriesFound++;
 
                    polygon.setMap(map);
                    google.maps.event.addListener(polygon,
-                                                 'mouseover',
+                                                 'click',
                                                  function() {
-                                                   polygon.setOptions({fillOpacity : 9});
-                                                   draw_chart([
-                                                                {country : countryName, category : $("#datasets").val(), color : 'green'}
-                                                              ]); // TODO: use correct color
-                                                   $("#chart").show();
-                                                 });
-                   google.maps.event.addListener(polygon,
-                                                 'mouseout',
-                                                 function() {
-                                                   polygon.setOptions({fillOpacity : 0.5});
-                                                   $("#chart").hide();
+                                                   toggleCountry(countryName);
+                                                   updateHash();
                                                  });
                  }
                }
              }
       );
+    }
+
+    function toggleCountry(countryName) {
+      var polygon = countryToRendering[countryName]['polygon'];
+      if (polygon) {
+        var countryColor = countryToRendering[countryName]['color'];
+        // if the country is already selected...
+        if (currentlySelectedCountries.hasOwnProperty(countryName)) {
+          polygon.setOptions({
+                               fillColor : DEFAULT_COUNTRY_FILL_COLOR,
+                               fillOpacity : 0.5
+                             });
+
+          // remove the country from the set of selected countries
+          delete currentlySelectedCountries[countryName];
+        }
+        // if the country isn't already selected
+        else {
+          currentlySelectedCountries[countryName] = 1;
+          polygon.setOptions({
+                               fillColor : countryColor,
+                               fillOpacity : 0.9
+                             });
+        }
+
+        updateChart();
+      }
+    }
+
+    function updateChart() {
+      // update and show the chart if there are selected countries.  Otherwise, hide it.
+      if (Object.keys(currentlySelectedCountries).length > 0) {
+        var series = [];
+        Object.keys(currentlySelectedCountries).sort().forEach(function(countryName) {
+          series.push({country : countryName, category : $("#datasets").val(), color : countryToRendering[countryName]['color']})
+        });
+        draw_chart(series);
+        $("#chart").show();
+      } else {
+        $("#chart").hide();
+      }
+    }
+
+    function updateHash() {
+      currentHash = window.btoa($("#datasets").val() + "|" + Object.keys(currentlySelectedCountries).join('|'));
+      console.log('Setting hash to ' + currentHash);
+      window.location.hash = currentHash;
+    }
+
+    function readHash() {
+      var newHash = window.location.hash.slice(1);
+      console.log("readHash(): newHash = [" + newHash + "] current = [" + currentHash + "]");
+      if (newHash != currentHash) {
+        currentHash = newHash;
+
+        // deselect all countries
+        Object.keys(currentlySelectedCountries).sort().forEach(function(countryName) {
+          toggleCountry(countryName);
+        });
+
+        if (newHash.length > 0) {
+          var deserialized = window.atob(currentHash).split('|');
+          console.log('currentHash is ' + currentHash);
+          console.log('deserialized is ' + deserialized);
+
+          // the dataset is stored in the first element.
+          $("#datasets").val(deserialized.shift());
+
+          // all the rest are countries
+          while (deserialized.length > 0) {
+            toggleCountry(deserialized.shift());
+          }
+        }
+      }
     }
 
     google.load("visualization", "1", {packages : ["corechart"]});
@@ -242,7 +328,7 @@
 <body>
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
-  <table border="0" cellpadding="0" cellspacing="0">
+  <table border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
     <tr>
       <td>
         <div id="map_canvas"></div>
@@ -251,12 +337,8 @@
         <select id="datasets"></select>
       </td>
     </tr>
-    <tr>
-      <td>
-        <div id="chart" class="noselect"></div>
-      </td>
-    </tr>
   </table>
+  <div id="chart" class="noselect"></div>
 </div>
 </body>
 </html>
