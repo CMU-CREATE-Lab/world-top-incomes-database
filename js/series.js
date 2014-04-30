@@ -30,6 +30,17 @@ function fetch_computed_data(country, category) {
   return ret;
 }
 
+/**
+ * Returns a boolean for whether the given country has data for the given category.
+ *
+ * @param country - the country name
+ * @param category - the category name
+ * @returns {boolean}
+ */
+function hasData(country, category) {
+  return fetch_data(country, category).length > 0;
+}
+
 //
 // fetch_data
 // Example:
