@@ -248,29 +248,31 @@
     }
 
     function toggleCountry(countryName) {
-      var polygon = countryToRendering[countryName]['polygon'];
-      if (polygon) {
-        var countryColor = countryToRendering[countryName]['color'];
-        // if the country is already selected...
-        if (currentlySelectedCountries.hasOwnProperty(countryName)) {
-          polygon.setOptions({
-                               fillColor : DEFAULT_COUNTRY_FILL_COLOR,
-                               fillOpacity : 0.5
-                             });
+      if (typeof countryToRendering[countryName] !== 'undefined') {
+        var polygon = countryToRendering[countryName]['polygon'];
+        if (polygon) {
+          var countryColor = countryToRendering[countryName]['color'];
+          // if the country is already selected...
+          if (currentlySelectedCountries.hasOwnProperty(countryName)) {
+            polygon.setOptions({
+                                 fillColor : DEFAULT_COUNTRY_FILL_COLOR,
+                                 fillOpacity : 0.5
+                               });
 
-          // remove the country from the set of selected countries
-          delete currentlySelectedCountries[countryName];
-        }
-        // if the country isn't already selected
-        else {
-          currentlySelectedCountries[countryName] = 1;
-          polygon.setOptions({
-                               fillColor : countryColor,
-                               fillOpacity : 0.9
-                             });
-        }
+            // remove the country from the set of selected countries
+            delete currentlySelectedCountries[countryName];
+          }
+          // if the country isn't already selected
+          else {
+            currentlySelectedCountries[countryName] = 1;
+            polygon.setOptions({
+                                 fillColor : countryColor,
+                                 fillOpacity : 0.9
+                               });
+          }
 
-        updateChart();
+          updateChart();
+        }
       }
     }
 
