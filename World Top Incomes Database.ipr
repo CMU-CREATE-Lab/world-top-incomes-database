@@ -60,8 +60,8 @@
     <version value="1.0" />
   </component>
   <component name="JavaScriptLibraryMappings">
-    <file url="PROJECT" libraries="{Node.js v0.10.26 Core Modules}" />
-    <includedPredefinedLibrary name="Node.js Globals" />
+    <file url="file://$PROJECT_DIR$/map.html" libraries="{jQuery 1.11.0, jQuery UI 1.10.4}" />
+    <file url="PROJECT" libraries="{google.visualization-DefinitelyTyped, googlemaps-DefinitelyTyped, jQuery 1.11.0, jQuery UI 1.10.4}" />
   </component>
   <component name="ProjectCodeStyleSettingsManager">
     <option name="PER_PROJECT_SETTINGS">
