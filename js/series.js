@@ -98,8 +98,8 @@ var chart;
 
 // Example:
 //
-//  draw_chart_new([{country:'United States', category:'Top 1% income share', color:'green'},
-//                  {country:'United States', category:'Top 10% income share', color:'blue'}]);
+//  draw_chart([{country:'United States', category:'Top 1% income share', color:'green'},
+//              {country:'United States', category:'Top 10% income share', color:'blue'}]);
 //
 // Assumes chart lives in div ID 'chart'
 
@@ -114,7 +114,9 @@ function draw_chart(series) {
   for (var i = 0; i < series.length; i++) {
     var country = series[i].country;
     var category = series[i].category;
-    colors.push(series[i].color);
+    if (series[i].color) {
+      colors.push(series[i].color);
+    }
     var data = fetch_data(country, category);
 
     // skip this country if it has no data for the given category
@@ -149,7 +151,7 @@ function draw_chart(series) {
     if (!chart) {
       chart = new google.visualization.LineChart(document.getElementById('chart'));
     }
-    chart.draw(google.visualization.arrayToDataTable(table), {colors : colors});
+    chart.draw(google.visualization.arrayToDataTable(table), colors.length ? {colors : colors} : null);
   } else {
     $('#chart').hide();
   }

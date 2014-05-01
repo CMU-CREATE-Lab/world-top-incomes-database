@@ -30,59 +30,32 @@ function draw_chart_tmp() {
               {country:'United States', category:'Top 10% income share', color:'blue'}]);
 }
 
-function draw_chart_old() {
-  var table = [['year']];
-  var years = {};
-  var col = 0;
+function update_chart() {
 
   var countries = Object.keys(wtid.countries).sort();
-  var serialize = [];
+
+  var series = [];
+  var state = [];
+
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
     for (var i = 0; i < wtid_series().length; i++) {
       var category = wtid_series()[i].category;
       var g = grid[country][category];
       if (g.displayed) {
-        serialize = serialize.concat([country, category]);
+        state = state.concat([country, category]);
       }
       if (g.displayed || country == mouseover.country && category == mouseover.category) {
-        var data = fetch_data(country, category);
-        table[0][col + 1] = country + ': ' + category;
-        for (var k = 0; k < data.length; k++) {
-          var year = data[k][0], value = data[k][1];
-          if (!(year in years)) {
-            years[year] = {};
-          }
-          years[year][col] = value;
-        }
-        col += 1;
+        series.push({country:country, category:category});
       }
     }
   }
-  current_hash = window.btoa(serialize.join('|').replace(/=/g, ''));
+
+  current_hash = window.btoa(state.join('|')).replace(/=/g, '');
   console.log('Setting hash to ' + current_hash);
   window.location.hash = current_hash;
 
-  var yearnos = Object.keys(years).sort();
-  for (var i = 0; i < yearnos.length; i++) {
-    var year = yearnos[i];
-    var row = [year];
-    for (var j = 0; j < col; j++) {
-      row.push(years[year][j]);
-    }
-    table.push(row);
-  }
-
-  if (col) {
-    $('#chart').show();
-
-    if (!chart) {
-      chart = new google.visualization.LineChart(document.getElementById('chart'));
-    }
-    chart.draw(google.visualization.arrayToDataTable(table));
-  } else {
-    $('#chart').hide();
-  }
+  draw_chart(series);
 }
 
 function set_grid_display(g, displayed) {
@@ -111,19 +84,19 @@ function toggle_series(e) {
   var g = grid[series.country][series.category];
   set_grid_display(g, !g.displayed);
   console.log('set ' + series.country + '|' + series.category + ' to ' + g.displayed);
-  draw_chart_tmp();
+  update_chart();
 
   console.log('toggle_series took ' + (new Date() - start));
 }
 
 function mouseenter(e) {
   mouseover = e.data;
-  draw_chart_tmp();
+  update_chart();
 }
 
 function mouseleave(e) {
   mouseover = {};
-  draw_chart_tmp();
+  update_chart();
 }
 
 var current_hash = null;
@@ -140,7 +113,7 @@ function read_hash() {
     while (deserialized.length >= 2) {
       set_grid_display(grid[deserialized.shift()][deserialized.shift()], true);
     }
-    draw_chart_tmp();
+    update_chart();
   }
 }
 
