@@ -42,6 +42,37 @@
       /*height: 500px;*/
     }
 
+    #animation_controls {
+      width: 870px;
+      border: 1px solid black;
+      border-top: none;
+      padding: 10px;
+    }
+
+    #date_slider {
+      width: 600px;
+      margin-left: 10px;
+      margin-right: 10px;
+    }
+
+    /* turns off the focus highlight for the slider handle */
+    .ui-slider-handle {
+      outline: none;
+    }
+
+    #current_year {
+      margin-left: 10px;
+      font-size: 12pt;
+      font-weight: bold;
+    }
+
+    .slider-arrow {
+      cursor: pointer;
+      margin: 0 5px 0 5px;
+      font-weight: bold;
+      font-size: 10pt;
+    }
+
     #chart {
       border: 1px solid black;
       border-top: none;
@@ -61,9 +92,11 @@
       cursor: default;
     }
   </style>
+  <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet"/>
   <script type="text/javascript" src="http://www.google.com/jsapi"></script>
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7ujry5lHgjxKODXbWfsQ5oM9XgSK6WXA&sensor=false"></script>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+  <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
   <script type="text/javascript" src="js/series.js"></script>
   <script type="text/javascript">
 
@@ -76,20 +109,27 @@
       "#6E2B45", "#C1D6B0", "#5A74C1", "#589E6D", "#BF7C9B", "#DF6926"
     ];
 
+    // from colorbrewer2.org
+    var PALETTE = ['rgb(255,255,204)', 'rgb(255,237,160)', 'rgb(254,217,118)', 'rgb(254,178,76)', 'rgb(253,141,60)', 'rgb(252,78,42)', 'rgb(227,26,28)', 'rgb(189,0,38)', 'rgb(128,0,38)'];
+
     var DEFAULT_COUNTRY_FILL_COLOR = "#333333";
     var DEFAULT_COUNTRY_STROKE_COLOR = "#ffffff";
     var SELECTED_COUNTRY_STROKE_COLOR = "#0000ff";
+    var NO_DATA_FILL_OPACITY = 0.5;
+    var HAS_DATA_FILL_OPACITY = 0.9;
 
-    var DATASETS = [
-      "Top 1% income share",
-      "Top 10% income share",
-      //"Top 1% average income",
-      //"Top 10% average income",
-      //"Bottom 90% average income",
-      "Top 1% / bottom 90% income",
-      "Top 10% / bottom 90% income"
-    ];
+    var DATASETS = {
+      "Top 1% income share" : {valueRange : {min : 0, max : 20}},
+      "Top 10% income share" : {valueRange : {min : 20, max : 45}},
+      //"Top 1% average income" : {}
+      //"Top 10% average income" : {}
+      //"Bottom 90% average income" : {}
+      "Top 1% / bottom 90% income" : {valueRange : {min : 0, max : 30}},
+      "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}}
+    };
+
     var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
+
     var map = null;
     var isMapLoaded = false;
     var isDataLoaded = false;
@@ -103,6 +143,9 @@
 
     // map of country name to and object containing "polygon" and "color" fields, used for rendering on map and in chart
     var countryToRendering = {};
+
+    var dateSlider = null;
+    var selectedYear = 2014;
 
     function executeQuery(query, successCallback) {
       // Construct the URL
@@ -166,6 +209,9 @@
           initializationIntervalHandle = null;
           console.log("Done loading!");
 
+          // cache the data in a way that makes animation easier
+          cacheData();
+
           init();
         }
       }, 200);
@@ -174,25 +220,67 @@
     function init() {
 
       // build the dataset select menu
-      DATASETS.forEach(function(name) {
+      Object.keys(DATASETS).forEach(function(name) {
         var option = $('<option value="' + name + '">' + name + '</option>');
         $("#datasets").append(option);
       });
       $("#datasets").change(function() {
         updateDatasetAvailabilityForCountries();
         updateChart();
+        updateMap();
+
+        // TODO: set the slider to a valid year if the currently selected year isn't in this new dataset
+
         updateHash();
+      });
+
+      // build the date slider and animation controls
+      dateSlider = $("#date_slider");
+      dateSlider.slider({
+                          min : getSelectedDatasetYearRange()['min'],
+                          max : getSelectedDatasetYearRange()['max'],
+                          value : getSelectedDatasetYearRange()['max'],
+                          change : handleSliderChange,
+                          slide : handleSliderChange
+                        });
+      $("#arrow_beginning").click(function() {
+        dateSlider.slider("option", "value", getSelectedDatasetYearRange()['min']);
+      });
+      $("#arrow_previous").click(function() {
+        var newVal = Math.max(getSelectedDatasetYearRange()['min'], dateSlider.slider("option", "value") - 1);
+        dateSlider.slider("option", "value", newVal);
+      });
+      $("#arrow_next").click(function() {
+        var newVal = Math.min(getSelectedDatasetYearRange()['max'], dateSlider.slider("option", "value") + 1);
+        dateSlider.slider("option", "value", newVal);
+      });
+      $("#arrow_end").click(function() {
+        dateSlider.slider("option", "value", getSelectedDatasetYearRange()['max']);
       });
 
       // build the country name to polygon map, render the polygons on the map
       buildCountryRenderings();
 
+      updateDatasetAvailabilityForCountries();
+
       $(window).on('hashchange', readHash);
       readHash();
-      updateDatasetAvailabilityForCountries();
+
+      // simulate a click to set the slider to the max value--this
+      // has the side effect of setting the current year label too
+      $("#arrow_end").click();
 
       $("#loading_panel").hide();
       $("#main_panel").show();
+    }
+
+    function handleSliderChange(event, ui) {
+      var year = ui.value;
+      $("#current_year").text(year);
+
+      selectedYear = year;
+
+      updateMap();
     }
 
     function buildCountryRenderings() {
@@ -210,7 +298,7 @@
                                                   strokeOpacity : 0.8,
                                                   strokeWeight : 1,
                                                   fillColor : DEFAULT_COUNTRY_FILL_COLOR,
-                                                  fillOpacity : 0.5
+                                                  fillOpacity : NO_DATA_FILL_OPACITY
                                                 });
                };
 
@@ -271,7 +359,7 @@
                      toggleCountry($("#" + checkboxId).val());
                      updateHash();
                    });
-                   $("#countryList").append(countryListItem);
+                   $("#country_list").append(countryListItem);
                  }
                }
              }
@@ -330,10 +418,79 @@
       }
     }
 
+    function getSelectedDatasetName() {
+      return $("#datasets").val();
+    }
+
+    function getSelectedDatasetYearRange() {
+      return DATASETS[getSelectedDatasetName()]['yearRange'];
+    }
+
+    function updateMap() {
+      var dataset = getSelectedDatasetName();
+      var data = DATASETS[dataset]['data'];
+      Object.keys(wtid.countries).forEach(function(countryName) {
+        setCountryColor(countryName, null);
+        if (typeof data[countryName] !== 'undefined') {
+          var value = data[countryName][selectedYear];
+          if (value) {
+            setCountryColor(countryName, getColorForValue(DATASETS[dataset]['valueRange'], value));
+          }
+        }
+      });
+    }
+
+    function getColorForValue(valueRange, value) {
+      // clamp the value to be within the allowed range
+      var clampedValue = Math.min(Math.max(value, valueRange['min']), valueRange['max']);
+
+      var numBuckets = PALETTE.length;
+      var percentage = (clampedValue - valueRange['min']) / (valueRange['max'] - valueRange['min']);   // convert to [0,1]
+      var colorIndex = Math.max(0, Math.ceil(percentage * numBuckets) - 1);
+      return PALETTE[colorIndex];
+    }
+
+    function setCountryColor(countryName, color) {
+      var options;
+      if (color) {
+        options = {
+          "fillColor" : color,
+          fillOpacity : HAS_DATA_FILL_OPACITY
+        };
+      } else {
+        options = {
+          "fillColor" : DEFAULT_COUNTRY_FILL_COLOR,
+          fillOpacity : NO_DATA_FILL_OPACITY
+        };
+      }
+      countryToRendering[countryName]['polygon'].setOptions(options);
+    }
+
+    function cacheData() {
+      Object.keys(DATASETS).forEach(function(datasetName) {
+        DATASETS[datasetName]['data'] = {};
+
+        var yearRange = {min : Number.MAX_VALUE, max : Number.MIN_VALUE};
+        Object.keys(wtid.countries).forEach(function(countryName) {
+          var data = fetch_data(countryName, datasetName);
+          DATASETS[datasetName]['data'][countryName] = {};
+          for (var i = 0; i < data.length; i++) {
+            var year = data[i][0];
+            yearRange['min'] = Math.min(year, yearRange['min']);
+            yearRange['max'] = Math.max(year, yearRange['max']);
+            DATASETS[datasetName]['data'][countryName][year] = data[i][1];
+          }
+        });
+        DATASETS[datasetName]['yearRange'] = yearRange;
+
+      });
+    }
+
     // Toggle each country's polygon and list item depending on whether the country has data for the selected dataset
     function updateDatasetAvailabilityForCountries() {
-      var dataset = $("#datasets").val();
-      Object.keys(countryToRendering).forEach(function(countryName) {
+      var dataset = getSelectedDatasetName();
+
+      Object.keys(wtid.countries).forEach(function(countryName) {
         var isDatasetNonEmpty = hasData(countryName, dataset);
 
         // toggle the polygon visibility
@@ -357,7 +514,7 @@
       var series = [];
       if (Object.keys(currentlySelectedCountries).length > 0) {
         Object.keys(currentlySelectedCountries).sort().forEach(function(countryName) {
-          var dataset = $("#datasets").val();
+          var dataset = getSelectedDatasetName();
           if (hasData(countryName, dataset)) {
             series.push({country : countryName, category : dataset, color : countryToRendering[countryName]['color']})
           }
@@ -374,7 +531,7 @@
     }
 
     function updateHash() {
-      currentHash = window.btoa($("#datasets").val() + "|" + Object.keys(currentlySelectedCountries).join('|'));
+      currentHash = window.btoa(getSelectedDatasetName() + "|" + Object.keys(currentlySelectedCountries).join('|'));
       //console.log("updateHash(): " + window.atob(currentHash).split('|'));
       window.location.hash = currentHash;
     }
@@ -415,16 +572,47 @@
   <table border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
     <tr valign="top">
       <td>
-        <div id="map_canvas"></div>
-      </td>
-      <td rowspan="2" valign="top">
-        <select id="datasets"></select>
-        <div id="countryList"></div>
-      </td>
-    </tr>
-    <tr>
-      <td>
+        <div id="map_canvas" class="noselect"></div>
+        <div id="animation_controls" class="noselect">
+          <table border="0" cellpadding="0" cellspacing="0" align="center">
+            <tr>
+              <td align="left">
+                <button id="start_stop_animation_button">Play</button>
+                <select id="animation_interval_millis">
+                  <option value="1000">1 fps</option>
+                  <option value="500">2 fps</option>
+                  <option value="200">5 fps</option>
+                  <option value="100" selected="selected">10 fps</option>
+                  <option value="40">25 fps</option>
+                  <option value="10">100 fps</option>
+                </select>
+              </td>
+              <td>
+                <div id="arrow_beginning" class="slider-arrow">|&lt;</div>
+              </td>
+              <td>
+                <div id="arrow_previous" class="slider-arrow">&lt;</div>
+              </td>
+              <td>
+                <div id="date_slider"></div>
+              </td>
+              <td>
+                <div id="arrow_next" class="slider-arrow">&gt;</div>
+              </td>
+              <td>
+                <div id="arrow_end" class="slider-arrow">&gt;|</div>
+              </td>
+              <td align="right">
+                <div id="current_year">2014</div>
+              </td>
+            </tr>
+          </table>
+        </div>
         <div id="chart" class="noselect"></div>
+      </td>
+      <td rowspan="3" valign="top">
+        <select id="datasets"></select>
+        <div id="country_list" class="noselect"></div>
       </td>
     </tr>
   </table>
