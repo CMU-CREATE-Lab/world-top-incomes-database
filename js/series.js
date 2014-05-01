@@ -108,8 +108,8 @@ function draw_chart(series) {
   var years = {};
   var colors = [];
   var col = 0;
-  console.log('draw chart new');
-  console.log(series);
+  //console.log('draw chart new');
+  //console.log(series);
 
   for (var i = 0; i < series.length; i++) {
     var country = series[i].country;
@@ -141,7 +141,7 @@ function draw_chart(series) {
     table.push(row);
   }
 
-  console.log('col is ' + col);
+  //console.log('col is ' + col);
 
   if (col) {
     $('#chart').show();
