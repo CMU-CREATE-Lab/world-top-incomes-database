@@ -8,7 +8,7 @@
       font-family: "Helvetica Neue", HelveticaNeue, Helvetica, Arial, sans-serif;
     }
 
-    .noselect {
+    .noselect, label {
       -moz-user-select: none;
       -webkit-user-select: none;
       -webkit-text-size-adjust: none;
@@ -36,17 +36,29 @@
 
     #map_canvas {
       border: 1px solid black;
-      width: 1024px;
-      height: 500px;
+      width: 890px;
+      height: 430px;
+      /*width: 1024px;*/
+      /*height: 500px;*/
     }
 
     #chart {
+      border: 1px solid black;
+      border-top: none;
       display: none;
       width: auto;
       height: 400px;
-      margin-top: 10px;
       margin-left: auto;
       margin-right: auto;
+    }
+
+    .country_list_item label, .country_list_item input {
+      cursor: pointer;
+    }
+
+    .inactive {
+      color: #cccccc;
+      cursor: default;
     }
   </style>
   <script type="text/javascript" src="http://www.google.com/jsapi"></script>
@@ -69,9 +81,9 @@
     var DATASETS = [
       "Top 1% income share",
       "Top 10% income share",
-      "Top 1% average income",
-      "Top 10% average income",
-      "Bottom 90% average income",
+      //"Top 1% average income",
+      //"Top 10% average income",
+      //"Bottom 90% average income",
       "Top 1% / bottom 90% income",
       "Top 10% / bottom 90% income"
     ];
@@ -123,6 +135,7 @@
       // which have WTID data, but then I'd need to serialize the data fetching calls, so...whatever.
       executeQuery(COUNTRY_GEOMETRY_QUERY,
                    function(data) {
+                     console.log("Geometries loaded!");
                      countryGeometryRecords = data;
                      isCountryGeometryLoaded = true;
                    }
@@ -130,7 +143,8 @@
 
       // initialize and load the map
       map = new google.maps.Map(document.getElementById("map_canvas"), {
-        center : new google.maps.LatLng(17.97873303293798, 11.33789075000005),
+        center : new google.maps.LatLng(15.284185050572193, 27.86132825000005),
+        //center : new google.maps.LatLng(17.97873303293798, 11.33789075000005),
         zoom : 2,
         mapTypeId : google.maps.MapTypeId.ROADMAP
       });
@@ -163,23 +177,23 @@
         $("#datasets").append(option);
       });
       $("#datasets").change(function() {
-        updateMap();
+        updateDatasetAvailabilityForCountries();
         updateChart();
         updateHash();
       });
 
       // build the country name to polygon map, render the polygons on the map
-      buildCountryPolygons();
+      buildCountryRenderings();
 
       $(window).on('hashchange', readHash);
       readHash();
-      updateMap();
+      updateDatasetAvailabilityForCountries();
 
       $("#loading_panel").hide();
       $("#main_panel").show();
     }
 
-    function buildCountryPolygons() {
+    function buildCountryRenderings() {
       Object.keys(wtid.countries).forEach(function(countryName) {
         countryToRendering[countryName] = {};
       });
@@ -243,19 +257,52 @@
                                                    toggleCountry(countryName);
                                                    updateHash();
                                                  });
+
+                   // add the country to the list
+                   var cleanedCountryName = stripAllNonAlpha(countryName);
+                   var checkboxId = "country_list_checkbox" + cleanedCountryName;
+
+                   var countryListItem = $('<div class="country_list_item" id="country_list_item' + cleanedCountryName + '">' +
+                                           '   <input type="checkbox" class="country_list_checkbox" id="'+checkboxId+'" name="selected_countries" value="'+countryName+'">' +
+                                           '   <label for="country_list_checkbox'+cleanedCountryName +'">'+countryName+'</label>' +
+                                           '</div>').change(function(){
+                     toggleCountry($("#" + checkboxId).val());
+                     updateHash();
+                   });
+                   $("#countryList").append(countryListItem);
                  }
                }
              }
       );
     }
 
+    /**
+     * Returns the given string with all non-alphabetic characters removed.  Returns the string unchanged if the string
+     * is undefined or null.
+     *
+     * @returns {string}
+     */
+    function stripAllNonAlpha(str) {
+      if (str) {
+        return str.replace(/[^a-zA-Z]/g, '');
+      }
+
+      return str;
+    }
+
     function toggleCountry(countryName) {
+
       if (typeof countryToRendering[countryName] !== 'undefined') {
         var polygon = countryToRendering[countryName]['polygon'];
         if (polygon) {
           var countryColor = countryToRendering[countryName]['color'];
           // if the country is already selected...
-          if (currentlySelectedCountries.hasOwnProperty(countryName)) {
+          var isSelected = currentlySelectedCountries.hasOwnProperty(countryName);
+
+          // Setting the map to null here, and then to the map after setting the polygon options fixes a bug where the
+          // new polygon options occasionally aren't honored.
+          polygon.setMap(null);
+          if (isSelected) {
             polygon.setOptions({
                                  fillColor : DEFAULT_COUNTRY_FILL_COLOR,
                                  fillOpacity : 0.5
@@ -272,36 +319,63 @@
                                  fillOpacity : 0.9
                                });
           }
+          polygon.setMap(map);
+
+          // update the radio button
+          $("#country_list_checkbox" + stripAllNonAlpha(countryName)).prop("checked", !isSelected);
+
 
           updateChart();
         }
       }
     }
 
-    // Shows or hides each country's polygon depending on whether the country has data for the selected dataset
-    function updateMap() {
+    // Toggle each country's polygon and list item depending on whether the country has data for the selected dataset
+    function updateDatasetAvailabilityForCountries() {
       var dataset = $("#datasets").val();
       Object.keys(countryToRendering).forEach(function(countryName) {
-        countryToRendering[countryName]['polygon'].setMap(hasData(countryName, dataset) > 0 ? map : null);
+        var isDatasetNonEmpty = hasData(countryName, dataset);
+
+        // toggle the polygon visibility
+        countryToRendering[countryName]['polygon'].setMap(isDatasetNonEmpty ? map : null);
+
+        // toggle the list item enabled/disabled
+        var listItemId = "country_list_item" + stripAllNonAlpha(countryName);
+        var checkboxId = "country_list_checkbox" + stripAllNonAlpha(countryName);
+        if (isDatasetNonEmpty) {
+          $("#"+listItemId).removeClass("inactive");
+          $("#"+checkboxId).removeAttr("disabled");
+        } else {
+          $("#"+listItemId).addClass("inactive");
+          $("#"+checkboxId).attr("disabled", true);
+        }
       });
     }
 
     function updateChart() {
       // update and show the chart if there are selected countries.  Otherwise, hide it.
+      var series = [];
       if (Object.keys(currentlySelectedCountries).length > 0) {
-        var series = [];
         Object.keys(currentlySelectedCountries).sort().forEach(function(countryName) {
-          series.push({country : countryName, category : $("#datasets").val(), color : countryToRendering[countryName]['color']})
+          var dataset = $("#datasets").val();
+          if (hasData(countryName, dataset)){
+            series.push({country : countryName, category : dataset, color : countryToRendering[countryName]['color']})
+          }
         });
+      }
+
+      if (series.length > 0) {
         draw_chart(series);
         $("#chart").show();
-      } else {
+      }
+      else {
         $("#chart").hide();
       }
     }
 
     function updateHash() {
       currentHash = window.btoa($("#datasets").val() + "|" + Object.keys(currentlySelectedCountries).join('|'));
+      //console.log("updateHash(): " + window.atob(currentHash).split('|'));
       window.location.hash = currentHash;
     }
 
@@ -317,8 +391,8 @@
 
         if (newHash.length > 0) {
           var deserialized = window.atob(currentHash).split('|');
-          console.log('currentHash is ' + currentHash);
-          console.log('deserialized is ' + deserialized);
+          //console.log('currentHash: ' + currentHash);
+          //console.log('deserialized: ' + deserialized);
 
           // the dataset is stored in the first element.
           $("#datasets").val(deserialized.shift());
@@ -339,16 +413,21 @@
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
   <table border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
-    <tr>
+    <tr valign="top">
       <td>
         <div id="map_canvas"></div>
       </td>
       <td rowspan="2" valign="top">
         <select id="datasets"></select>
+        <div id="countryList"></div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <div id="chart" class="noselect"></div>
       </td>
     </tr>
   </table>
-  <div id="chart" class="noselect"></div>
 </div>
 </body>
 </html>
