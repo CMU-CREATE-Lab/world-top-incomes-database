@@ -77,6 +77,8 @@
     ];
 
     var DEFAULT_COUNTRY_FILL_COLOR = "#333333";
+    var DEFAULT_COUNTRY_STROKE_COLOR = "#ffffff";
+    var SELECTED_COUNTRY_STROKE_COLOR = "#0000ff";
 
     var DATASETS = [
       "Top 1% income share",
@@ -204,7 +206,7 @@
                var createPolygon = function(paths) {
                  return new google.maps.Polygon({
                                                   paths : paths,
-                                                  strokeColor : "#ffffff",
+                                                  strokeColor : DEFAULT_COUNTRY_STROKE_COLOR,
                                                   strokeOpacity : 0.8,
                                                   strokeWeight : 1,
                                                   fillColor : DEFAULT_COUNTRY_FILL_COLOR,
@@ -263,9 +265,9 @@
                    var checkboxId = "country_list_checkbox" + cleanedCountryName;
 
                    var countryListItem = $('<div class="country_list_item" id="country_list_item' + cleanedCountryName + '">' +
-                                           '   <input type="checkbox" class="country_list_checkbox" id="'+checkboxId+'" name="selected_countries" value="'+countryName+'">' +
-                                           '   <label for="country_list_checkbox'+cleanedCountryName +'">'+countryName+'</label>' +
-                                           '</div>').change(function(){
+                                           '   <input type="checkbox" class="country_list_checkbox" id="' + checkboxId + '" name="selected_countries" value="' + countryName + '">' +
+                                           '   <label for="country_list_checkbox' + cleanedCountryName + '">' + countryName + '</label>' +
+                                           '</div>').change(function() {
                      toggleCountry($("#" + checkboxId).val());
                      updateHash();
                    });
@@ -295,7 +297,6 @@
       if (typeof countryToRendering[countryName] !== 'undefined') {
         var polygon = countryToRendering[countryName]['polygon'];
         if (polygon) {
-          var countryColor = countryToRendering[countryName]['color'];
           // if the country is already selected...
           var isSelected = currentlySelectedCountries.hasOwnProperty(countryName);
 
@@ -304,8 +305,8 @@
           polygon.setMap(null);
           if (isSelected) {
             polygon.setOptions({
-                                 fillColor : DEFAULT_COUNTRY_FILL_COLOR,
-                                 fillOpacity : 0.5
+                                 strokeColor : DEFAULT_COUNTRY_STROKE_COLOR,
+                                 strokeOpacity : 0.8
                                });
 
             // remove the country from the set of selected countries
@@ -315,15 +316,14 @@
           else {
             currentlySelectedCountries[countryName] = 1;
             polygon.setOptions({
-                                 fillColor : countryColor,
-                                 fillOpacity : 0.9
+                                 strokeColor : SELECTED_COUNTRY_STROKE_COLOR,
+                                 strokeOpacity : 1
                                });
           }
           polygon.setMap(map);
 
           // update the radio button
           $("#country_list_checkbox" + stripAllNonAlpha(countryName)).prop("checked", !isSelected);
-
 
           updateChart();
         }
@@ -343,11 +343,11 @@
         var listItemId = "country_list_item" + stripAllNonAlpha(countryName);
         var checkboxId = "country_list_checkbox" + stripAllNonAlpha(countryName);
         if (isDatasetNonEmpty) {
-          $("#"+listItemId).removeClass("inactive");
-          $("#"+checkboxId).removeAttr("disabled");
+          $("#" + listItemId).removeClass("inactive");
+          $("#" + checkboxId).removeAttr("disabled");
         } else {
-          $("#"+listItemId).addClass("inactive");
-          $("#"+checkboxId).attr("disabled", true);
+          $("#" + listItemId).addClass("inactive");
+          $("#" + checkboxId).attr("disabled", true);
         }
       });
     }
@@ -358,7 +358,7 @@
       if (Object.keys(currentlySelectedCountries).length > 0) {
         Object.keys(currentlySelectedCountries).sort().forEach(function(countryName) {
           var dataset = $("#datasets").val();
-          if (hasData(countryName, dataset)){
+          if (hasData(countryName, dataset)) {
             series.push({country : countryName, category : dataset, color : countryToRendering[countryName]['color']})
           }
         });
