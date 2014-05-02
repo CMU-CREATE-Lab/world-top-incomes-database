@@ -16,11 +16,6 @@
       user-select: none;
     }
 
-    .title_text {
-      text-align: center;
-      font-size: 20pt;
-    }
-
     #loading_panel {
       position: absolute;
       top: 0;
@@ -34,6 +29,20 @@
       font-size: 50pt;
     }
 
+    .title_text {
+      text-align: center;
+      font-size: 20pt;
+    }
+
+    .subtitle_text {
+      text-align: center;
+      font-size: 12pt;
+    }
+
+    #main_content {
+      margin-top:10px;
+    }
+
     #map_canvas {
       border: 1px solid black;
       width: 890px;
@@ -41,6 +50,7 @@
       /*width: 1024px;*/
       /*height: 500px;*/
     }
+
 
     #animation_controls {
       width: 870px;
@@ -55,8 +65,8 @@
       margin-right: 10px;
     }
 
-    /* turns off the focus highlight for the slider handle */
-    .ui-slider-handle {
+    /* turns off the focus highlight */
+    .ui-slider-handle, .no_focus_highlight {
       outline: none;
     }
 
@@ -83,7 +93,15 @@
       margin-right: auto;
     }
 
+    #datasets_container {
+      margin-top: 10px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: center;
+    }
+
     #country_list {
+      margin-left: 10px;
       display: table;
     }
 
@@ -103,6 +121,18 @@
       height: 10px;
       width: 10px;
       background-color: red;
+      margin-right:3px;
+    }
+
+    #palette_canvas {
+      width: 25px;
+      height: 430px;
+      border: 1px solid black;
+      margin-right: 10px;
+    }
+
+    .value_range_legend {
+      padding-right: 5px;
     }
 
     .inactive {
@@ -150,13 +180,13 @@
     var HAS_DATA_FILL_OPACITY = 0.9;
 
     var DATASETS = {
-      "Top 1% income share" : {valueRange : {min : 0, max : 20}},
-      "Top 10% income share" : {valueRange : {min : 20, max : 45}},
+      "Top 1% income share" : {valueRange : {min : 0, max : 20}, units : "%"},
+      "Top 10% income share" : {valueRange : {min : 20, max : 45}, units : "%"},
       //"Top 1% average income" : {}
       //"Top 10% average income" : {}
       //"Bottom 90% average income" : {}
-      "Top 1% / bottom 90% income" : {valueRange : {min : 0, max : 30}},
-      "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}}
+      "Top 1% / bottom 90% income" : {valueRange : {min : 0, max : 30}, units : "%"},
+      "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}, units : "%"}
     };
 
     var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
@@ -256,7 +286,7 @@
         $("#datasets").append(option);
       });
       $("#datasets").change(function() {
-        updateDatasetAvailabilityForCountries();
+        handleDatasetChange();
         updateChart();
         updateMap();
 
@@ -264,6 +294,14 @@
 
         updateHash();
       });
+
+      // build the palette legend
+      var paletteCanvas = $("#palette_canvas");
+      var paletteCanvasElem = paletteCanvas.get(0);
+      paletteCanvasElem.width = paletteCanvas.width();
+      paletteCanvasElem.style.width = paletteCanvas.width() + "px";
+      paletteCanvasElem.height = paletteCanvas.height();
+      paletteCanvasElem.style.height = paletteCanvas.height() + "px";
 
       // build the date slider and animation controls
       dateSlider = $("#date_slider");
@@ -292,10 +330,13 @@
       // build the country name to polygon map, render the polygons on the map
       buildCountryRenderings();
 
-      updateDatasetAvailabilityForCountries();
+      handleDatasetChange();
 
       $(window).on('hashchange', readHash);
       readHash();
+
+      // render the palette legend
+      renderPaletteLegend();
 
       // simulate a click to set the slider to the max value--this
       // has the side effect of setting the current year label too
@@ -303,6 +344,30 @@
 
       $("#loading_panel").hide();
       $("#main_panel").show();
+    }
+
+    function renderPaletteLegend() {
+      var valueRange = DATASETS[getSelectedDatasetName()]['valueRange'];
+      var minValue = valueRange['min'];
+      var maxValue = valueRange['max'];
+      var paletteCanvas = $("#palette_canvas");
+      var pixelWidth = paletteCanvas.width();
+      var pixelHeight = paletteCanvas.height();
+      var paletteCanvasContext = paletteCanvas.get(0).getContext("2d");
+      paletteCanvasContext.scale(1, 1);
+      paletteCanvasContext.clearRect(0, 0, pixelWidth, pixelHeight);
+
+      for (var y = 0; y <= pixelHeight; y = y + 1) {
+        var percentage = 1 - y / pixelHeight;
+        var value = percentage * (maxValue - minValue) + minValue;
+        var color = getColorForValue(valueRange, value);
+        paletteCanvasContext.lineWidth = 1;
+        paletteCanvasContext.strokeStyle = color;
+        paletteCanvasContext.beginPath();
+        paletteCanvasContext.moveTo(0, y - 0.5);
+        paletteCanvasContext.lineTo(pixelWidth, y - 0.5);
+        paletteCanvasContext.stroke();
+      }
     }
 
     function handleSliderChange(event, ui) {
@@ -385,7 +450,7 @@
 
                    var countryListItem = $('<div style="display: table-row;" class="country_list_item" id="country_list_item' + cleanedCountryName + '">' +
                                            '   <div class="country_list_item_color_container">' +
-                                           '      <div id="country_list_item_color'+cleanedCountryName+'" class="country_list_item_color"></div>' +
+                                           '      <div id="country_list_item_color' + cleanedCountryName + '" class="country_list_item_color"></div>' +
                                            '   </div>' +
                                            '   <input style="display: table-cell;" type="checkbox" class="country_list_checkbox" id="' + checkboxId + '" name="selected_countries" value="' + countryName + '">' +
                                            '   <label for="country_list_checkbox' + cleanedCountryName + '" class="country_list_label">' + countryName + '</label>' +
@@ -561,7 +626,7 @@
     }
 
     // Toggle each country's polygon and list item depending on whether the country has data for the selected dataset
-    function updateDatasetAvailabilityForCountries() {
+    function handleDatasetChange() {
       var dataset = getSelectedDatasetName();
 
       Object.keys(wtid.countries).forEach(function(countryName) {
@@ -581,6 +646,12 @@
           $("#" + checkboxId).attr("disabled", true);
         }
       });
+
+      // update the palette legend
+      var valueRange = DATASETS[getSelectedDatasetName()]['valueRange'];
+      var units = DATASETS[getSelectedDatasetName()]['units'];
+      $("#value_range_min").text(valueRange['min'] + " " + units);
+      $("#value_range_max").text(valueRange['max'] + " " + units);
     }
 
     function updateChart() {
@@ -643,8 +714,33 @@
 <body>
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
-  <table border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
+  <div class="title_text">World Top Income Database</div>
+  <div class="subtitle_text">Some sort of descriptive/credit text should go here here</div>
+  <div id="datasets_container">
+    <select id="datasets" class="no_focus_highlight"></select>
+  </div>
+  <table id="main_content" border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
     <tr valign="top">
+      <td>
+        <div id="palette_legend">
+          <table border="0" cellpadding="0" cellspacing="0">
+            <tr valign="top">
+              <td align="right">
+                <div id="value_range_max" class="value_range_legend">100</div>
+              </td>
+              <td rowspan="2">
+                <canvas id="palette_canvas"></canvas>
+              </td>
+            </tr>
+            <tr valign="bottom">
+              <td align="right">
+                <div id="value_range_min" class="value_range_legend">0</div>
+              </td>
+            </tr>
+          </table>
+
+        </div>
+      </td>
       <td>
         <div id="map_canvas" class="noselect"></div>
         <div id="animation_controls" class="noselect">
@@ -652,7 +748,7 @@
             <tr>
               <td align="left">
                 <button id="start_stop_animation_button">Play</button>
-                <select id="animation_interval_millis">
+                <select id="animation_interval_millis" class="no_focus_highlight">
                   <option value="1000">1 fps</option>
                   <option value="500">2 fps</option>
                   <option value="200">5 fps</option>
@@ -668,7 +764,7 @@
                 <div id="arrow_previous" class="slider-arrow">&lt;</div>
               </td>
               <td>
-                <div id="date_slider"></div>
+                <div id="date_slider" class="no_focus_highlight"></div>
               </td>
               <td>
                 <div id="arrow_next" class="slider-arrow">&gt;</div>
@@ -684,8 +780,7 @@
         </div>
         <div id="chart" class="noselect"></div>
       </td>
-      <td rowspan="3" valign="top">
-        <select id="datasets"></select>
+      <td valign="top">
         <div id="country_list" class="noselect"></div>
       </td>
     </tr>
