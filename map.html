@@ -83,8 +83,26 @@
       margin-right: auto;
     }
 
+    #country_list {
+      display: table;
+    }
+
     .country_list_item label, .country_list_item input {
       cursor: pointer;
+    }
+
+    .country_list_checkbox, .country_list_label, .country_list_item_color_container {
+      display: table-cell;
+    }
+
+    .country_list_item_color_container {
+      padding-left: 5px;
+    }
+
+    .country_list_item_color {
+      height: 10px;
+      width: 10px;
+      background-color: red;
     }
 
     .inactive {
@@ -365,9 +383,12 @@
                    var cleanedCountryName = stripAllNonAlpha(countryName);
                    var checkboxId = "country_list_checkbox" + cleanedCountryName;
 
-                   var countryListItem = $('<div class="country_list_item" id="country_list_item' + cleanedCountryName + '">' +
-                                           '   <input type="checkbox" class="country_list_checkbox" id="' + checkboxId + '" name="selected_countries" value="' + countryName + '">' +
-                                           '   <label for="country_list_checkbox' + cleanedCountryName + '">' + countryName + '</label>' +
+                   var countryListItem = $('<div style="display: table-row;" class="country_list_item" id="country_list_item' + cleanedCountryName + '">' +
+                                           '   <div class="country_list_item_color_container">' +
+                                           '      <div id="country_list_item_color'+cleanedCountryName+'" class="country_list_item_color"></div>' +
+                                           '   </div>' +
+                                           '   <input style="display: table-cell;" type="checkbox" class="country_list_checkbox" id="' + checkboxId + '" name="selected_countries" value="' + countryName + '">' +
+                                           '   <label for="country_list_checkbox' + cleanedCountryName + '" class="country_list_label">' + countryName + '</label>' +
                                            '</div>').change(function() {
                      toggleCountry($("#" + checkboxId).val());
                      updateHash();
@@ -449,40 +470,40 @@
           var value = data[countryName][selectedYear];
 
           // if not, try to find a previous value
-          if (!value) {
+          if (typeof value === 'undefined') {
             var years = data[countryName]['years'];
             var index = null;
             if (selectedYear < years[0]) {
               index = null;
             }
             else if (selectedYear > years[years.length - 1]) {
-               index = years.length - 1;
+              index = years.length - 1;
             }
             else {
-               index = org.cmucreatelab.util.Arrays.binarySearch(years, selectedYear, org.cmucreatelab.util.Arrays.NUMERIC_COMPARATOR);
-               if (index < 0) {
-                  index = ~index - 1;
-               }
-               else {
-                  // If the selectedYear exists in the years array, then we want the PREVIOUS one.  Need to be careful about
-                  // the case were we ask for--and get--the very first element in the array.  There is no previous element
-                  // in that case, so return null.
-                  index = index - 1;
+              index = org.cmucreatelab.util.Arrays.binarySearch(years, selectedYear, org.cmucreatelab.util.Arrays.NUMERIC_COMPARATOR);
+              if (index < 0) {
+                index = ~index - 1;
+              }
+              else {
+                // If the selectedYear exists in the years array, then we want the PREVIOUS one.  Need to be careful about
+                // the case were we ask for--and get--the very first element in the array.  There is no previous element
+                // in that case, so return null.
+                index = index - 1;
 
-                  if (index < 0) {
-                    index = null;
-                  }
-               }
+                if (index < 0) {
+                  index = null;
+                }
+              }
             }
 
             // if we found an index, then get the value for the year pointed to by the index
-            if (index) {
+            if (index != null) {
               value = data[countryName][years[index]];
             }
           }
 
           // if we have a value now, then render it
-          if (value) {
+          if (typeof value !== 'undefined' && value != null) {
             setCountryColor(countryName, getColorForValue(DATASETS[dataset]['valueRange'], value));
           }
         }
@@ -512,6 +533,7 @@
           fillOpacity : NO_DATA_FILL_OPACITY
         };
       }
+      $("#country_list_item_color" + stripAllNonAlpha(countryName)).css("background-color", color ? color : "#ffffff");
       countryToRendering[countryName]['polygon'].setOptions(options);
     }
 
