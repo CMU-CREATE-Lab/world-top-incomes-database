@@ -326,6 +326,9 @@
         updateHash();
       });
 
+      // make sure to update the page when the hash changes (e.g. back button)
+      $(window).on('hashchange', readHash);
+
       // build the date slider and animation controls
       dateSlider = $("#date_slider");
       dateSlider.slider({
@@ -382,11 +385,10 @@
         }
       });
 
-      $(window).on('hashchange', readHash);
-      readHash();
-
       // build the country name to polygon map, render the polygons on the map
       buildCountryRenderings();
+
+      readHash();
 
       handleDatasetChange();
 
