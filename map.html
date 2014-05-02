@@ -40,7 +40,7 @@
     }
 
     #main_content {
-      margin-top:10px;
+      margin-top: 10px;
     }
 
     #map_canvas {
@@ -50,7 +50,6 @@
       /*width: 1024px;*/
       /*height: 500px;*/
     }
-
 
     #animation_controls {
       width: 870px;
@@ -121,7 +120,7 @@
       height: 10px;
       width: 10px;
       background-color: red;
-      margin-right:3px;
+      margin-right: 3px;
     }
 
     #palette_canvas {
@@ -198,6 +197,10 @@
     var initializationIntervalHandle = null;
     var currentlySelectedCountries = {};
     var currentHash = null;
+
+    // animation
+    var isPlaying = false;
+    var animationTimeoutHandle = null;
 
     // raw query results
     var countryGeometryRecords = null;
@@ -325,6 +328,35 @@
       });
       $("#arrow_end").click(function() {
         dateSlider.slider("option", "value", getSelectedDatasetYearRange()['max']);
+      });
+
+      // configure the animation controls
+      var animationButton = $("#start_stop_animation_button");
+      animationButton.click(function() {
+        var animate = function() {
+          window.clearTimeout(animationTimeoutHandle);
+          if (dateSlider.slider("option", "value") >= dateSlider.slider("option", "max")) {
+            $("#arrow_beginning").click();
+          }
+          else {
+            $("#arrow_next").click();
+          }
+          animationTimeoutHandle = window.setTimeout(animate, $("#animation_interval_millis").val());
+        };
+
+        if (isPlaying) {
+          animationButton.html("Play");
+          if (animationTimeoutHandle != null) {
+            window.clearTimeout(animationTimeoutHandle);
+            animationTimeoutHandle = null;
+          }
+          isPlaying = false;
+        }
+        else {
+          animationButton.html("Stop");
+          animate();
+          isPlaying = true;
+        }
       });
 
       // build the country name to polygon map, render the polygons on the map
@@ -750,11 +782,10 @@
                 <button id="start_stop_animation_button">Play</button>
                 <select id="animation_interval_millis" class="no_focus_highlight">
                   <option value="1000">1 fps</option>
-                  <option value="500">2 fps</option>
                   <option value="200">5 fps</option>
-                  <option value="100" selected="selected">10 fps</option>
-                  <option value="40">25 fps</option>
-                  <option value="10">100 fps</option>
+                  <option value="100">10 fps</option>
+                  <option value="40" selected="selected">25 fps</option>
+                  <option value="20">50 fps</option>
                 </select>
               </td>
               <td>
