@@ -16,6 +16,10 @@
       user-select: none;
     }
 
+    a {
+      text-decoration: none;
+    }
+
     #loading_panel {
       position: absolute;
       top: 0;
@@ -35,8 +39,9 @@
     }
 
     .subtitle_text {
-      text-align: center;
-      font-size: 12pt;
+      margin-top: 5px;
+      text-align: justify;
+      font-size: 10pt;
     }
 
     #main_content {
@@ -56,7 +61,7 @@
     }
 
     #date_slider {
-      width: 590px;
+      width: 650px;
       margin-left: 10px;
       margin-right: 10px;
     }
@@ -73,6 +78,7 @@
     }
 
     .slider-arrow {
+      display: none;
       cursor: pointer;
       margin: 0 5px 0 5px;
       font-weight: bold;
@@ -90,15 +96,18 @@
     }
 
     #datasets_container {
-      margin-top: 10px;
-      margin-left: auto;
-      margin-right: auto;
-      text-align: center;
+      margin-bottom: 10px;
+      text-align: left;
+    }
+
+    #dataset_description {
+      margin-left: 10px;
     }
 
     #country_list {
       margin-left: 10px;
       display: table;
+      width: 150px;
     }
 
     .country_list_item label, .country_list_item input {
@@ -118,6 +127,10 @@
       width: 10px;
       background-color: red;
       margin-right: 3px;
+    }
+
+    #palette_legend {
+      width: 150px;
     }
 
     #palette_canvas {
@@ -154,26 +167,15 @@
       "#6E2B45", "#C1D6B0", "#5A74C1", "#589E6D", "#BF7C9B", "#DF6926"
     ];
 
-    // from colorbrewer2.org
-    var PALETTE = ['rgb(255,255,204)', 'rgb(255,237,160)', 'rgb(254,217,118)', 'rgb(254,178,76)', 'rgb(253,141,60)', 'rgb(252,78,42)', 'rgb(227,26,28)', 'rgb(189,0,38)', 'rgb(128,0,38)'];
-
-    // from http://web-tech.ga-usa.com/2012/05/creating-a-custom-hot-to-cold-temperature-color-gradient-for-use-with-rrdtool/
-    //var PALETTE = ["#0500ff", "#0400ff", "#0300ff", "#0200ff", "#0100ff", "#0000ff", "#0002ff", "#0012ff", "#0022ff",
-    //               "#0032ff", "#0044ff", "#0054ff", "#0064ff", "#0074ff", "#0084ff", "#0094ff", "#00a4ff", "#00b4ff",
-    //               "#00c4ff", "#00d4ff", "#00e4ff", "#00fff4", "#00ffd0", "#00ffa8", "#00ff83", "#00ff5c", "#00ff36",
-    //               "#00ff10", "#17ff00", "#3eff00", "#65ff00", "#8aff00", "#b0ff00", "#d7ff00", "#fdff00", "#fffa00",
-    //               "#fff000", "#ffe600", "#ffdc00", "#ffd200", "#ffc800", "#ffbe00", "#ffb400", "#ffaa00", "#ffa000",
-    //               "#ff9600", "#ff8c00", "#ff8200", "#ff7800", "#ff6e00", "#ff6400", "#ff5a00", "#ff5000", "#ff4600",
-    //               "#ff3c00", "#ff3200", "#ff2800", "#ff1e00", "#ff1400", "#ff0a00", "#ff0000", "#ff0010", "#ff0020",
-    //               "#ff0030", "#ff0040", "#ff0050", "#ff0060", "#ff0070", "#ff0080", "#ff0090", "#ff00a0", "#ff00b0",
-    //               "#ff00c0", "#ff00d0", "#ff00e0", "#ff00f0", "#ff01f0", "#ff02f0", "#ff03f0", "#ff04f0", "#ff05f0",
-    //               "#ff06f0", "#ff07f0", "#ff08f0", "#ff09f0", "#ff0af0", "#ff0bf0", "#ff0cf0", "#ff0df0", "#ff0ef0"];
+    var PALETTE = ["#fff5f0", "#fff3ee", "#fff2eb", "#fff0e9", "#ffeee6", "#ffede4", "#ffebe1", "#fee9df", "#fee7dd", "#fee6da", "#fee4d8", "#fee2d5", "#fee1d3", "#feded0", "#fedbcc", "#fed8c8", "#fdd5c4", "#fdd2c0", "#fdcfbc", "#fdccb8", "#fdc9b4", "#fdc6b0", "#fcc3ac", "#fcc0a8", "#fcbda4", "#fcbaa0", "#fcb79c", "#fcb498", "#fcb095", "#fcad91", "#fcaa8d", "#fca689", "#fca385", "#fca082", "#fc9c7e", "#fc997a", "#fc9676", "#fc9272", "#fc8f6f", "#fc8c6c", "#fc8969", "#fc8565", "#fc8262", "#fc7f5f", "#fb7c5c", "#fb7959", "#fb7555", "#fb7252", "#fb6f4f", "#fb6c4c", "#fb6849", "#fa6446", "#f96144", "#f85d42", "#f7593f", "#f6553d", "#f5513a", "#f44e38", "#f34a35", "#f24633", "#f14231", "#f03e2e", "#ef3b2c", "#ec382b", "#e93529", "#e63228", "#e32f27", "#e02d26", "#dd2a25", "#da2723", "#d72422", "#d42121", "#d21e20", "#cf1c1f", "#cc191d", "#c9171d", "#c6171c", "#c3161b", "#bf151b", "#bc151a", "#b91419", "#b61319", "#b31218", "#b01217", "#ad1117", "#aa1016", "#a70f15", "#a30f15", "#9e0d14", "#990c13", "#940b13", "#8f0a12", "#8a0812", "#850711", "#800610", "#7b0510", "#76040f", "#71020e", "#6c010e", "#67000d"];
 
     var DEFAULT_COUNTRY_FILL_COLOR = "#333333";
     var DEFAULT_COUNTRY_STROKE_COLOR = "#ffffff";
     var SELECTED_COUNTRY_STROKE_COLOR = "#000000";
     var NO_DATA_FILL_OPACITY = 0.5;
     var HAS_DATA_FILL_OPACITY = 0.9;
+
+    var MIN_YEAR = 1920;
 
     var UI_SIZES = {
       small : {
@@ -187,13 +189,10 @@
     };
 
     var DATASETS = {
-      "Top 1% income share" : {valueRange : {min : 0, max : 20}, units : "%"},
-      "Top 10% income share" : {valueRange : {min : 20, max : 45}, units : "%"},
-      //"Top 1% average income" : {}
-      //"Top 10% average income" : {}
-      //"Bottom 90% average income" : {}
-      "Top 1% / bottom 90% income" : {valueRange : {min : 0, max : 30}, units : "x"},
-      "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}, units : "x"}
+      "Top 1% income share" : {valueRange : {min : 0, max : 20}, units : "%", description : "What proportion of all income flows just to the country's top 1%?"},
+      "Top 10% income share" : {valueRange : {min : 20, max : 45}, units : "%", description : "What proportion of all income flows just to the country's top 10%?"},
+      "Top 1% / bottom 90% income" : {valueRange : {min : 0, max : 30}, units : "x", description : "The income per person for the top 1% equals the income of how many in the bottom 90%?"},
+      "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}, units : "x", description : "The income per person for the top 10% equals the income of how many in the bottom 90%?"}
     };
 
     var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
@@ -263,8 +262,25 @@
         center : new google.maps.LatLng(15.284185050572193, 27.86132825000005),
         //center : new google.maps.LatLng(17.97873303293798, 11.33789075000005),
         zoom : 2,
-        mapTypeId : google.maps.MapTypeId.ROADMAP
-      });
+        mapTypeId : google.maps.MapTypeId.ROADMAP,
+        styles : [
+          {
+            featureType : 'all',
+            stylers : [
+              //{hue: '#00ffe6'},
+              //{invert_lightness: 'false'},
+              {saturation : -90}
+              ,
+              {lightness : 40}
+            ]
+          },
+          {
+            featureType : 'poi',
+            stylers : [
+              {visibility : 'off'}
+            ]
+          }
+        ]  });
       google.maps.event.addListenerOnce(map, 'tilesloaded',
                                         function(e) {
                                           console.log("Map loaded!");
@@ -361,13 +377,13 @@
         }
       });
 
+      $(window).on('hashchange', readHash);
+      readHash();
+
       // build the country name to polygon map, render the polygons on the map
       buildCountryRenderings();
 
       handleDatasetChange();
-
-      $(window).on('hashchange', readHash);
-      readHash();
 
       // render the palette legend
       renderPaletteLegend();
@@ -391,7 +407,6 @@
       $("#map_canvas")
           .width(size.map.w)
           .height(size.map.h);
-
 
       google.maps.event.trigger(map, "resize");
       map.setZoom(size.map.zoom);
@@ -671,10 +686,12 @@
           DATASETS[datasetName]['data'][countryName] = {};
           for (var i = 0; i < data.length; i++) {
             var year = data[i][0];
-            years.push(year);
-            yearRange['min'] = Math.min(year, yearRange['min']);
-            yearRange['max'] = Math.max(year, yearRange['max']);
-            DATASETS[datasetName]['data'][countryName][year] = data[i][1];
+            if (year >= MIN_YEAR) {
+              years.push(year);
+              yearRange['min'] = Math.min(year, yearRange['min']);
+              yearRange['max'] = Math.max(year, yearRange['max']);
+              DATASETS[datasetName]['data'][countryName][year] = data[i][1];
+            }
           }
           DATASETS[datasetName]['data'][countryName]['years'] = years.sort();
         });
@@ -698,10 +715,10 @@
         var checkboxId = "country_list_checkbox" + stripAllNonAlpha(countryName);
         if (isDatasetNonEmpty) {
           $("#" + listItemId).removeClass("inactive");
-          $("#" + checkboxId).removeAttr("disabled");
+          //$("#" + checkboxId).removeAttr("disabled");
         } else {
           $("#" + listItemId).addClass("inactive");
-          $("#" + checkboxId).attr("disabled", true);
+          //$("#" + checkboxId).attr("disabled", true);
         }
       });
 
@@ -710,6 +727,9 @@
       var units = DATASETS[getSelectedDatasetName()]['units'];
       $("#value_range_min").text(valueRange['min'] + " " + units);
       $("#value_range_max").text(valueRange['max'] + " " + units);
+
+      // update the dataset description
+      $("#dataset_description").text(DATASETS[getSelectedDatasetName()]['description']);
     }
 
     function updateChart() {
@@ -772,16 +792,38 @@
 <body>
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
-  <div class="title_text">World Top Income Database</div>
-  <div class="subtitle_text">Some sort of descriptive/credit text should go here here</div>
-  <div id="datasets_container">
-    <select id="datasets" class="no_focus_highlight"></select>
+  <div class="title_text">Explorable Inequality</div>
+  <div class="subtitle_text">
+    <a href="http://www.hup.harvard.edu/catalog.php?isbn=9780674430006" target="_blank"><i>Capital in the 21st Century</i></a> bases its analysis of wealth inequality on tax data from 29 countries over one
+    hundred years. This data is openly available as
+    <a href="http://topincomes.g-mond.parisschoolofeconomics.eu/" target="_blank">The World Top Incomes Database</a>. To create a sharable,
+    interactive visualization of global inequality, Carnegie Mellon's
+    <a href="http://www.cmucreatelab.org/" target="_blank">CREATE Lab</a> is releasing this explorable viewer
+    for WTID. See how the income of the wealthiest classes have evolved, and how much greater wealth the top 1% have
+    compared to the rest of society in each country. A
+    <a href="http://vimeo.com/" target="_blank">quick tour of the tool</a> is available.
   </div>
   <table id="main_content" border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
+    <tr>
+      <td>&nbsp;</td>
+      <td>
+        <div id="datasets_container">
+          <table border="0" cellpadding="0" cellspacing="0" align="center">
+            <tr>
+              <td><select id="datasets" class="no_focus_highlight"></select></td>
+              <td>
+                <div id="dataset_description" class="noselect"></div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </td>
+      <td>&nbsp;</td>
+    </tr>
     <tr valign="top">
       <td>
         <div id="palette_legend">
-          <table border="0" cellpadding="0" cellspacing="0">
+          <table border="0" cellpadding="0" cellspacing="0" align="right">
             <tr valign="top">
               <td align="right">
                 <div id="value_range_max" class="value_range_legend">100</div>
@@ -806,26 +848,16 @@
               <td align="left">
                 <button id="start_stop_animation_button">Play</button>
                 <select id="animation_interval_millis" class="no_focus_highlight" style="margin-right:10px">
-                  <option value="1000">1 fps</option>
-                  <option value="200">5 fps</option>
-                  <option value="100">10 fps</option>
-                  <option value="40" selected="selected">25 fps</option>
-                  <option value="20">50 fps</option>
+                  <option value="200">slow</option>
+                  <option value="100">medium</option>
+                  <option value="40" selected="selected">fast</option>
                 </select>
               </td>
               <td>
-                <div id="arrow_beginning" class="slider-arrow">|&lt;</div>
-              </td>
-              <td>
-                <div id="arrow_previous" class="slider-arrow">&lt;</div>
-              </td>
-              <td>
                 <div id="date_slider" class="no_focus_highlight"></div>
-              </td>
-              <td>
+                <div id="arrow_beginning" class="slider-arrow">|&lt;</div>
+                <div id="arrow_previous" class="slider-arrow">&lt;</div>
                 <div id="arrow_next" class="slider-arrow">&gt;</div>
-              </td>
-              <td>
                 <div id="arrow_end" class="slider-arrow">&gt;|</div>
               </td>
               <td align="right">
