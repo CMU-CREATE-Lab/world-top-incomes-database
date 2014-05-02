@@ -47,12 +47,9 @@
       border: 1px solid black;
       width: 890px;
       height: 430px;
-      /*width: 1024px;*/
-      /*height: 500px;*/
     }
 
     #animation_controls {
-      width: 870px;
       border: 1px solid black;
       border-top: none;
       padding: 10px;
@@ -178,6 +175,17 @@
     var NO_DATA_FILL_OPACITY = 0.5;
     var HAS_DATA_FILL_OPACITY = 0.9;
 
+    var UI_SIZES = {
+      small : {
+        map : {w : 890, h : 430, center : new google.maps.LatLng(20.138470250643206, 8.52539075000005), zoom : 2},
+        slider : 590
+      },
+      big : {
+        map : {w : 510, h : 265, center : new google.maps.LatLng(15.284185050572193, 27.86132825000005), zoom : 1},
+        slider : 338
+      }
+    };
+
     var DATASETS = {
       "Top 1% income share" : {valueRange : {min : 0, max : 20}, units : "%"},
       "Top 10% income share" : {valueRange : {min : 20, max : 45}, units : "%"},
@@ -261,7 +269,6 @@
                                         function(e) {
                                           console.log("Map loaded!");
                                           isMapLoaded = true;
-
                                         });
 
       // Kick of an interval timer to keep checking whether all the various data sources have finished loading.  Once
@@ -297,14 +304,6 @@
 
         updateHash();
       });
-
-      // build the palette legend
-      var paletteCanvas = $("#palette_canvas");
-      var paletteCanvasElem = paletteCanvas.get(0);
-      paletteCanvasElem.width = paletteCanvas.width();
-      paletteCanvasElem.style.width = paletteCanvas.width() + "px";
-      paletteCanvasElem.height = paletteCanvas.height();
-      paletteCanvasElem.style.height = paletteCanvas.height() + "px";
 
       // build the date slider and animation controls
       dateSlider = $("#date_slider");
@@ -378,11 +377,35 @@
       $("#main_panel").show();
     }
 
+    function setUiSize(isBig) {
+      var size = UI_SIZES[isBig ? 'big' : 'small'];
+      $("#palette_canvas")
+          .height(size.map.h);
+
+      $("#date_slider")
+          .width(size.slider);
+
+      $("#map_canvas")
+          .width(size.map.w)
+          .height(size.map.h);
+
+
+      google.maps.event.trigger(map, "resize");
+      map.setZoom(size.map.zoom);
+      map.setCenter(size.map.center);
+    }
+
     function renderPaletteLegend() {
+      var paletteCanvas = $("#palette_canvas");
+      var paletteCanvasElem = paletteCanvas.get(0);
+      paletteCanvasElem.width = paletteCanvas.width();
+      paletteCanvasElem.style.width = paletteCanvas.width() + "px";
+      paletteCanvasElem.height = paletteCanvas.height();
+      paletteCanvasElem.style.height = paletteCanvas.height() + "px";
+
       var valueRange = DATASETS[getSelectedDatasetName()]['valueRange'];
       var minValue = valueRange['min'];
       var maxValue = valueRange['max'];
-      var paletteCanvas = $("#palette_canvas");
       var pixelWidth = paletteCanvas.width();
       var pixelHeight = paletteCanvas.height();
       var paletteCanvasContext = paletteCanvas.get(0).getContext("2d");
