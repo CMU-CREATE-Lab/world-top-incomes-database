@@ -35,13 +35,17 @@
 
     .title_text {
       text-align: center;
-      font-size: 20pt;
+      font-size: 17pt;
     }
 
     .subtitle_text {
       margin-top: 5px;
       text-align: justify;
-      font-size: 10pt;
+      font-size: 9pt;
+    }
+
+    #intro_description {
+      max-width: 890px;
     }
 
     #main_content {
@@ -96,6 +100,7 @@
     }
 
     #datasets_container {
+      margin-top: 5px;
       margin-bottom: 10px;
       text-align: left;
     }
@@ -792,21 +797,21 @@
 <body>
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
-  <div class="title_text">Explorable Inequality</div>
-  <div class="subtitle_text">
-    <a href="http://www.hup.harvard.edu/catalog.php?isbn=9780674430006" target="_blank"><i>Capital in the 21st Century</i></a> bases its analysis of wealth inequality on tax data from 29 countries over one
-    hundred years. This data is openly available as
-    <a href="http://topincomes.g-mond.parisschoolofeconomics.eu/" target="_blank">The World Top Incomes Database</a>. To create a sharable,
-    interactive visualization of global inequality, Carnegie Mellon's
-    <a href="http://www.cmucreatelab.org/" target="_blank">CREATE Lab</a> is releasing this explorable viewer
-    for WTID. See how the income of the wealthiest classes have evolved, and how much greater wealth the top 1% have
-    compared to the rest of society in each country. A
-    <a href="http://vimeo.com/" target="_blank">quick tour of the tool</a> is available.
-  </div>
   <table id="main_content" border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
     <tr>
       <td>&nbsp;</td>
       <td>
+        <div class="title_text">Explorable Inequality</div>
+        <div id="intro_description" class="subtitle_text">
+          <a href="http://www.hup.harvard.edu/catalog.php?isbn=9780674430006" target="_blank"><i>Capital in the 21st Century</i></a> bases its analysis of wealth inequality on tax data from 29 countries over one
+          hundred years. This data is openly available as
+          <a href="http://topincomes.g-mond.parisschoolofeconomics.eu/" target="_blank">The World Top Incomes Database</a>. To create a sharable,
+          interactive visualization of global inequality, Carnegie Mellon's
+          <a href="http://www.cmucreatelab.org/" target="_blank">CREATE Lab</a> is releasing this explorable viewer
+          for WTID. See how the income of the wealthiest classes have evolved, and how much greater wealth the top 1% have
+          compared to the rest of society in each country. A
+          <a href="http://vimeo.com/" target="_blank">quick tour of the tool</a> is available.
+        </div>
         <div id="datasets_container">
           <table border="0" cellpadding="0" cellspacing="0" align="center">
             <tr>
