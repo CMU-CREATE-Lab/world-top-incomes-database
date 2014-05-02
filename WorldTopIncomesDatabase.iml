@@ -8,6 +8,7 @@
     <orderEntry type="library" name="jQuery 1.11.0" level="application" />
     <orderEntry type="library" name="googlemaps-DefinitelyTyped" level="application" />
     <orderEntry type="library" name="google.visualization-DefinitelyTyped" level="application" />
+    <orderEntry type="library" name="CREATE Lab Commons JavaScript" level="project" />
   </component>
 </module>
 
