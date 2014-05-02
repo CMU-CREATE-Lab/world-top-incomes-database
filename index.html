@@ -263,7 +263,7 @@
       );
 
       // initialize and load the map
-      map = new google.maps.Map(document.getElementById("map_canvas"), {
+      index = new google.maps.Map(document.getElementById("map_canvas"), {
         center : new google.maps.LatLng(15.284185050572193, 27.86132825000005),
         //center : new google.maps.LatLng(17.97873303293798, 11.33789075000005),
         zoom : 2,
@@ -286,7 +286,7 @@
           }
         ]
       });
-      google.maps.event.addListenerOnce(map, 'tilesloaded',
+      google.maps.event.addListenerOnce(index, 'tilesloaded',
                                         function(e) {
                                           console.log("Map loaded!");
                                           isMapLoaded = true;
@@ -415,9 +415,9 @@
           .width(size.map.w)
           .height(size.map.h);
 
-      google.maps.event.trigger(map, "resize");
-      map.setZoom(size.map.zoom);
-      map.setCenter(size.map.center);
+      google.maps.event.trigger(index, "resize");
+      index.setZoom(size.map.zoom);
+      index.setCenter(size.map.center);
     }
 
     function renderPaletteLegend() {
@@ -516,7 +516,7 @@
                    countryToRendering[countryName]['color'] = COUNTRY_COLORS[numCountriesFound % COUNTRY_COLORS.length];
                    numCountriesFound++;
 
-                   polygon.setMap(map);
+                   polygon.setMap(index);
                    google.maps.event.addListener(polygon,
                                                  'click',
                                                  function() {
@@ -587,7 +587,7 @@
                                  strokeOpacity : 1
                                });
           }
-          polygon.setMap(map);
+          polygon.setMap(index);
 
           // update the radio button
           $("#country_list_checkbox" + stripAllNonAlpha(countryName)).prop("checked", !isSelected);
@@ -715,7 +715,7 @@
         var isDatasetNonEmpty = hasData(countryName, dataset);
 
         // toggle the polygon visibility
-        countryToRendering[countryName]['polygon'].setMap(isDatasetNonEmpty ? map : null);
+        countryToRendering[countryName]['polygon'].setMap(isDatasetNonEmpty ? index : null);
 
         // toggle the list item enabled/disabled
         var listItemId = "country_list_item" + stripAllNonAlpha(countryName);
