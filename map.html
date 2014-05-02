@@ -98,6 +98,7 @@
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js"></script>
   <script type="text/javascript" src="js/series.js"></script>
+  <script type="text/javascript" src="lib/commons-javascript/org/cmucreatelab/util/Arrays.js"></script>
   <script type="text/javascript">
 
     // Generated this set at http://tools.medialab.sciences-po.fr/iwanthue/
@@ -444,7 +445,43 @@
       Object.keys(wtid.countries).forEach(function(countryName) {
         setCountryColor(countryName, null);
         if (typeof data[countryName] !== 'undefined') {
+          // first see if there's a value for the selected year
           var value = data[countryName][selectedYear];
+
+          // if not, try to find a previous value
+          if (!value) {
+            var years = data[countryName]['years'];
+            var index = null;
+            if (selectedYear < years[0]) {
+              index = null;
+            }
+            else if (selectedYear > years[years.length - 1]) {
+               index = years.length - 1;
+            }
+            else {
+               index = org.cmucreatelab.util.Arrays.binarySearch(years, selectedYear, org.cmucreatelab.util.Arrays.NUMERIC_COMPARATOR);
+               if (index < 0) {
+                  index = ~index - 1;
+               }
+               else {
+                  // If the selectedYear exists in the years array, then we want the PREVIOUS one.  Need to be careful about
+                  // the case were we ask for--and get--the very first element in the array.  There is no previous element
+                  // in that case, so return null.
+                  index = index - 1;
+
+                  if (index < 0) {
+                    index = null;
+                  }
+               }
+            }
+
+            // if we found an index, then get the value for the year pointed to by the index
+            if (index) {
+              value = data[countryName][years[index]];
+            }
+          }
+
+          // if we have a value now, then render it
           if (value) {
             setCountryColor(countryName, getColorForValue(DATASETS[dataset]['valueRange'], value));
           }
@@ -484,14 +521,17 @@
 
         var yearRange = {min : Number.MAX_VALUE, max : Number.MIN_VALUE};
         Object.keys(wtid.countries).forEach(function(countryName) {
+          var years = [];
           var data = fetch_data(countryName, datasetName);
           DATASETS[datasetName]['data'][countryName] = {};
           for (var i = 0; i < data.length; i++) {
             var year = data[i][0];
+            years.push(year);
             yearRange['min'] = Math.min(year, yearRange['min']);
             yearRange['max'] = Math.max(year, yearRange['max']);
             DATASETS[datasetName]['data'][countryName][year] = data[i][1];
           }
+          DATASETS[datasetName]['data'][countryName]['years'] = years.sort();
         });
         DATASETS[datasetName]['yearRange'] = yearRange;
 
