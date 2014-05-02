@@ -335,12 +335,15 @@
         var animate = function() {
           window.clearTimeout(animationTimeoutHandle);
           if (dateSlider.slider("option", "value") >= dateSlider.slider("option", "max")) {
-            $("#arrow_beginning").click();
+            animationTimeoutHandle = window.setTimeout(function() {
+              $("#arrow_beginning").click();
+              animate();
+            }, isPlaying ? 1000 : 0); // if animating, wait at the end for a second before looping again.
           }
           else {
             $("#arrow_next").click();
+            animationTimeoutHandle = window.setTimeout(animate, $("#animation_interval_millis").val());
           }
-          animationTimeoutHandle = window.setTimeout(animate, $("#animation_interval_millis").val());
         };
 
         if (isPlaying) {
