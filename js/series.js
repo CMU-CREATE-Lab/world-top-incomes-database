@@ -87,7 +87,7 @@ function wtid_series() {
       if (s.category.match(/ average income/)) {
         var computed_category = s.category.replace(' average income', ' / bottom 90% income');
         computed_source[computed_category] = s.category;
-        wtid_series_cached.push({category : computed_category});
+        wtid_series_cached.push({category : computed_category, id:s.id + 0.5});
       }
     }
   }

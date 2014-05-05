@@ -6,19 +6,69 @@ body {
   margin:0px;
   border:0px;
 }
-td {
-  font-size:9px;
-  border:1px solid black;
+
+.gridrow {
+  white-space:nowrap;
+}
+
+.gridrow > div {
+  display:inline-block;
+  border-bottom:1px solid #bbb;
+  border-right:1px solid #bbb;
+  vertical-align:top;
+  font-size:10px;
+}
+
+.gridupperleft,.gridcategory {
+  width:325px;
+  padding-right:5px;
+  margin-left:-1px;
+  background-color:#eee;
+}
+
+.gridupperleft,.gridcountry {
+  height:100px;
+  background-color:#eee;
+}
+
+.rotate_text_90 {
+  white-space:nowrap;
+  position: relative;
+  left:-100%;
+  width:300%;
+  height:100%;
+  text-align:center;
+  line-height:0px;
+  -webkit-transform:rotate(-90deg) translateY(50%);
+  -ms-transform:rotate(-90deg) translateY(50%);
+  transform:rotate(-90deg) translateY(50%);
+}
+
+.gridcountry,.gridcell {
+  width:30px;
+}
+
+.gridcell,.gridcategory { 
+ height:20px;
+  line-height:20px;
   text-align:center;
   cursor:pointer;
+  word-wrap: break-word;
+  white-space:normal;
 }
-table {
-  border-collapse:collapse;
+
+.gridcategory {
+  text-align:right;
 }
+.gridcell {
+  width:30px;
+}
+
+
 </style>
 
 <script src="https://www.google.com/jsapi"></script>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+<script src="js/jquery.min.js"></script>
 <script src="js/series.js"></script>
 <script>
 
@@ -83,7 +133,9 @@ function toggle_series(e) {
   console.log('toggle series ' + JSON.stringify(series));
   var g = grid[series.country][series.category];
   set_grid_display(g, !g.displayed);
-  console.log('set ' + series.country + '|' + series.category + ' to ' + g.displayed);
+  if (!g.displayed && series.country == mouseover.country && series.category == mouseover.category) {
+    mouseover = {};
+  }   
   update_chart();
 
   console.log('toggle_series took ' + (new Date() - start));
@@ -117,27 +169,40 @@ function read_hash() {
   }
 }
 
+function borders(right, bottom, elts) {
+  if (right) elts = elts.css('border-right', '1px solid black');
+  if (bottom) elts = elts.css('border-bottom', '1px solid black');
+  return elts;
+}
+
 function init_wtid(data) {
   wtid = data;
   /// Create table of countries and series
-  
-  var header = $('<tr>');
-  header.append($('<td>'));
-  for (var i = 0; i < wtid_series().length; i++) {
-    var series = wtid_series()[i];
-    header.append($('<td>').append(series.category));
-  }
-  $('#grid').append(header);
+
+  //$('#grid').append('yoyodyne');
+  row = $('<div class="gridrow">');
+  row.append(borders(true, true, $('<div class="gridupperleft">')));
 
   var countries = Object.keys(wtid.countries).sort();
-  for (var j = 0; j < countries.length; j++) {
-    var country = countries[j];
-    grid[country] = {};
-    var row = $('<tr>');
-    row.append($('<td>').append(country));
-    for (var i = 0; i < wtid_series().length; i++) {
-      var series = wtid_series()[i];
-      var col = $('<td>');
+
+  for (var i = 0; i < countries.length; i++) {
+    row.append(borders(i % 5 == 4, true, $('<div class="gridcountry">').append($('<div class="rotate_text_90">').text(countries[i]))));
+  }
+  $('#grid').append(row);
+
+  for (var i = 0; i < wtid_series().length; i++) {
+    var series = wtid_series()[i];
+    var next_series = wtid_series()[i + 1];
+    console.log(series.category + ": " + Math.floor(series.id / 1000));
+    var bottom_border = next_series != undefined 
+                      && Math.floor(series.id / 1000) != Math.floor(next_series.id / 1000);
+    console.log(bottom_border);
+    var row = $('<div class="gridrow">');
+    row.append(borders(true, bottom_border, $('<div class="gridcategory">')).append(series.category));
+    for (var j = 0; j < countries.length; j++) {
+      var country = countries[j];
+      var col = borders(j % 5 == 4, bottom_border, $('<div class="gridcell">'));
+      grid[country] = grid[country] || {};
       grid[country][series.category] = {displayed:false, element:col, hilit:false};
       var data = fetch_data(country, series.category);
       if (data.length) {
@@ -145,6 +210,8 @@ function init_wtid(data) {
         col.click({country:country, category:series.category}, toggle_series);
         col.mouseenter({country:country, category:series.category}, mouseenter);
         col.mouseleave({country:country, category:series.category}, mouseleave);
+      } else {
+        col.append('&nbsp;');
       }
       row.append(col);
     }
@@ -154,15 +221,24 @@ function init_wtid(data) {
     $('#gridtop').children().css({position:'relative', left:-this.scrollLeft + 'px'});
     $('#gridleft').children().css({position:'relative', top:-this.scrollTop + 'px'});
   });
-  $('#gridtop').append($('#grid').clone(true,true)).css({height:$('#grid td').height() + 5});
-  $('#gridleft').append($('#grid').clone(true,true)).css({width:$('#grid td').width() + 5});
-  $('#gridtopleft').css({width:$('#gridleft').width() - 2,height:$('#gridtop').height() - 2});
+//  $('#gridtop').append($('#grid').clone(true,true)).css({height:$('#grid td').height() + 5});
+  $('#gridtop').append($('#grid').clone(true,true)).css({height:$('#grid .gridrow').height()});
   read_hash();
+  resize();
+}
+
+function resize() {
+  var scrollbar_width = 22;
+  var remainder = $(window).width() - $('.gridcategory').width() - scrollbar_width;
+  var colwidth = remainder / Object.keys(wtid.countries).length - 1;
+  $('.gridcell').width(colwidth);
+  $('.gridcountry').width(colwidth);
 }
 
 function init() {
   $.get('wtid.json', init_wtid);
   $(window).on('hashchange', read_hash);
+  $(window).resize(resize);
 }
 
 google.load("visualization", "1", {packages:["corechart"]});
@@ -172,10 +248,8 @@ google.setOnLoadCallback(init);
 
 </head>
 <body style="height:100%">
-<div id="gridtopleft" style="border:1px solid black; z-index:11; height:50px; position: absolute; background-color:#eee; width:100%; overflow:hidden"></div>
-<div id="gridtop" style="z-index:10; height:50px; position: absolute; background-color:#eee; width:100%; overflow:hidden"></div>
-<div id="gridleft" style="z-index:10; height:50%; position: absolute; background-color:#eee; width:100px; overflow:hidden"></div>
-<div style="height:50%; width:100%; overflow:auto"><table id="grid"></table></div>
+<div id="gridtop" style="z-index:10; height:50px; position: absolute; width:100%; overflow:hidden"></div>
+<div style="height:50%; width:100%; overflow-x:hidden; overflow-y:auto"><div id="grid"></div></div>
 <div id="chart" style="show:none; height:50%; width:100%"></div>
 </body>
 </html>
