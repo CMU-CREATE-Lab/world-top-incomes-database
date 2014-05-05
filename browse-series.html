@@ -23,7 +23,7 @@ body {
   width:325px;
   padding-right:5px;
   margin-left:-1px;
-  background-color:#eee;
+  background-color:#f1f1f1;
 }
 
 .gridupperleft,.gridcountry {
@@ -102,7 +102,6 @@ function update_chart() {
   }
 
   current_hash = window.btoa(state.join('|')).replace(/=/g, '');
-  console.log('Setting hash to ' + current_hash);
   window.location.hash = current_hash;
 
   draw_chart(series);
@@ -116,7 +115,6 @@ function set_grid_display(g, displayed) {
 }
 
 function clear_wtid_series() {
-  console.log('clear all series');
   var countries = Object.keys(wtid.countries).sort();
   for (var j = 0; j < countries.length; j++) {
     var country = countries[j];
@@ -129,8 +127,6 @@ function clear_wtid_series() {
 function toggle_series(e) {
   var series = e.data;
   var start = new Date();
-  console.log(series);
-  console.log('toggle series ' + JSON.stringify(series));
   var g = grid[series.country][series.category];
   set_grid_display(g, !g.displayed);
   if (!g.displayed && series.country == mouseover.country && series.category == mouseover.category) {
@@ -158,10 +154,7 @@ function read_hash() {
   if (new_hash != current_hash) {
     clear_wtid_series();
     current_hash = new_hash;
-    console.log('current_hash is ' + current_hash);
     var deserialized = window.atob(current_hash).split('|');
-    console.log('deserialized is ' + deserialized);
-    console.log(deserialized);
     while (deserialized.length >= 2) {
       set_grid_display(grid[deserialized.shift()][deserialized.shift()], true);
     }
@@ -193,10 +186,8 @@ function init_wtid(data) {
   for (var i = 0; i < wtid_series().length; i++) {
     var series = wtid_series()[i];
     var next_series = wtid_series()[i + 1];
-    console.log(series.category + ": " + Math.floor(series.id / 1000));
     var bottom_border = next_series != undefined 
                       && Math.floor(series.id / 1000) != Math.floor(next_series.id / 1000);
-    console.log(bottom_border);
     var row = $('<div class="gridrow">');
     row.append(borders(true, bottom_border, $('<div class="gridcategory">')).append(series.category));
     for (var j = 0; j < countries.length; j++) {
