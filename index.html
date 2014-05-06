@@ -2,6 +2,8 @@
 <html>
 <head>
   <title>Explorable Inequality: World Top Income Database</title>
+  <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet"/>
+  <link type="text/css" href="http://explorables.cmucreatelab.org/css/main.css" rel="stylesheet"/>
   <style type="text/css">
     body, p, table, tr, td, div, span {
       font-size: 8pt;
@@ -124,7 +126,7 @@
     }
 
     .country_list_item_color_container {
-      padding-left: 5px;
+      padding-left: 0px;
     }
 
     .country_list_item_color {
@@ -136,13 +138,13 @@
 
     #palette_legend {
       width: 150px;
+      margin-right: 10px;
     }
 
     #palette_canvas {
       width: 25px;
       height: 430px;
       border: 1px solid black;
-      margin-right: 10px;
     }
 
     .value_range_legend {
@@ -153,8 +155,27 @@
       color: #cccccc;
       cursor: default;
     }
+
+    /* Overrides for explorables.cmucreatelab.org CSS */
+
+    #logos {
+      width:890px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    .create-lab-font {
+      font-family: klavika, Helvetica, Arial, sans-serif !important;
+    }
+
+    #footer {
+      width: 890px;
+      margin-left: auto;
+      margin-right: auto;
+      margin-top: 50px;
+      font-size: 12pt;
+    }
   </style>
-  <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css" rel="stylesheet"/>
   <script type="text/javascript" src="http://www.google.com/jsapi"></script>
   <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC7ujry5lHgjxKODXbWfsQ5oM9XgSK6WXA&sensor=false"></script>
   <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
@@ -799,6 +820,14 @@
 <body>
 <div id="loading_panel">Loading...</div>
 <div id="main_panel">
+  <div id="logos">
+    <table border="0" cellpadding="0" cellspacing="0" width="890" align="center">
+      <tr valign="bottom">
+        <td><a href="http://cmucreatelab.org/" target="_blank"><div class="title-text create-lab-font" style="margin-bottom:-4px">CREATE Lab</div></a></td>
+        <td align="right"><a href="http://www.cmu.edu/" target="_blank"><div id="cmu-logo-detail-page"></div></a></td>
+      </tr>
+    </table>
+  </div>
   <table id="main_content" border="0" cellpadding="0" cellspacing="0" style="width:auto; margin-left: auto; margin-right: auto">
     <tr>
       <td>&nbsp;</td>
@@ -807,7 +836,7 @@
         <div id="intro_description" class="subtitle_text">
           <a href="http://www.hup.harvard.edu/catalog.php?isbn=9780674430006" target="_blank"><i>Capital in the 21st Century</i></a> bases its analysis of wealth inequality on tax data from 29 countries over one
           hundred years. This data is openly available as
-          <a href="http://topincomes.g-mond.parisschoolofeconomics.eu/" target="_blank">The World Top Incomes Database</a>. To create a sharable,
+          <a href="http://topincomes.g-mond.parisschoolofeconomics.eu/" target="_blank">The World Top Incomes Database</a> (WTID). To create a sharable,
           interactive visualization of global inequality, Carnegie Mellon's
           <a href="http://www.cmucreatelab.org/" target="_blank">CREATE Lab</a> is releasing this explorable viewer
           for WTID. See how the income of the wealthiest classes have evolved, and how much greater wealth the top 1% have
@@ -880,6 +909,12 @@
       </td>
     </tr>
   </table>
+  <div id="footer">
+    <hr class="line">
+    <a href="http://www.cmucreatelab.org/" target="_blank">CREATE Lab</a>&nbsp;&nbsp;|&nbsp;
+    <a href="http://www.cmu.edu" target="_blank">Carnegie Mellon University</a>&nbsp;&nbsp;|&nbsp;
+    <a href="mailto:info@cmucreatelab.org">info@cmucreatelab.org</a>
+  </div>
 </div>
 <script type="text/javascript">
   (function(i, s, o, g, r, a, m) {
