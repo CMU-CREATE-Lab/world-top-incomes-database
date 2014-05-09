@@ -221,7 +221,11 @@
       "Top 10% / bottom 90% income" : {valueRange : {min : 0, max : 8}, units : "x", description : "The income per person for the top 10% equals the income of how many in the bottom 90%?"}
     };
 
-    var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
+    // This fusion table has China and Taiwan lumped together
+    //var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1uL8KJV0bMb7A8-SkrIe0ko2DMtSypHX52DatEE4 ORDER BY Name";
+
+    // This fusion table has China and Taiwan separate
+    var COUNTRY_GEOMETRY_QUERY = "SELECT 'Name', 'geometry' FROM 1f_tinDo8ftQQ0o75J4BMero7YYr-WJxcqmM8VfOh ORDER BY Name";
 
     var map = null;
     var isMapLoaded = false;
