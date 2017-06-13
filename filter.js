@@ -2,7 +2,8 @@ var data = require('./wtid-2014-04-25');
 
 var desiredSeriesToVariantsMap = {
    "Top 1% income share" : [],
-   "Top 10% income share" : []
+   "Top 10% income share" : [],
+  "Bottom 90% average income" : []
 };
 
 // Some countries have a variant of the desired series.  So, first we need to find out what all the variants are
